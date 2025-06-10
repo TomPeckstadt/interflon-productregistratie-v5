@@ -38,23 +38,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Download, Search, X, Plus, Trash2, Users, Package, BarChart3 } from "lucide-react"
+import { Download, Search, X, Plus, Trash2, Users, Package, BarChart3, Edit } from "lucide-react"
 
 // Voeg deze imports toe voor de charts
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  LineChart,
-  Line,
-  Cell,
-} from "recharts"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 
 import { getCurrentUser, onAuthStateChange, signOut, LoginForm } from "@/lib/auth"
 
@@ -114,6 +101,9 @@ export default function ProductRegistrationApp() {
   const [filterDateTo, setFilterDateTo] = useState("")
   const [sortBy, setSortBy] = useState<"date" | "user" | "product">("date")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [showEditDialog, setShowEditDialog] = useState(false)
 
   // Laad alle data bij start
   useEffect(() => {
@@ -633,6 +623,25 @@ export default function ProductRegistrationApp() {
       } catch (error) {
         console.error("Onverwachte fout bij toevoegen product:", error)
         setImportError("Fout bij toevoegen product")
+      }
+    }
+  }
+
+  const updateProduct = async () => {
+    if (editingProduct && editingProduct.id) {
+      try {
+        console.log("updateProduct aangeroepen voor:", editingProduct)
+
+        // Update lokaal eerst
+        setProducts((prevProducts) => prevProducts.map((p) => (p.id === editingProduct.id ? editingProduct : p)))
+
+        setEditingProduct(null)
+        setShowEditDialog(false)
+        setImportMessage("✅ Product bijgewerkt!")
+        setTimeout(() => setImportMessage(""), 2000)
+      } catch (error) {
+        console.error("Fout bij bijwerken product:", error)
+        setImportError("Fout bij bijwerken product")
       }
     }
   }
@@ -1381,15 +1390,17 @@ export default function ProductRegistrationApp() {
           <TabsContent value="users">
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
-                <CardTitle className="flex items-center gap-2 text-xl">👥 Gebruikers Beheren</CardTitle>
-                <CardDescription>Voeg nieuwe gebruikers toe of verwijder bestaande</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Users className="mr-2 h-5 w-5" /> Gebruikers beheren
+                </CardTitle>
+                <CardDescription>Voeg nieuwe gebruikers toe of verwijder bestaande gebruikers</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
                       <Label htmlFor="newUserName" className="text-sm font-medium block">
-                        Nieuwe gebruiker
+                        Nieuwe gebruiker toevoegen
                       </Label>
                       <div className="flex gap-2">
                         <Input
@@ -1399,45 +1410,52 @@ export default function ProductRegistrationApp() {
                           value={newUserName}
                           onChange={(e) => setNewUserName(e.target.value)}
                         />
-                        <Button type="button" onClick={addNewUser} className="bg-green-600 hover:bg-green-700">
-                          <Plus className="mr-1 h-4 w-4" /> Toevoegen
+                        <Button onClick={addNewUser} className="bg-amber-600 hover:bg-amber-700">
+                          <Plus className="mr-2 h-4 w-4" /> Toevoegen
                         </Button>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="userFile" className="text-sm font-medium">
-                      Importeer gebruikers (CSV)
-                    </Label>
-                    <Input
-                      type="file"
-                      id="userFile"
-                      accept=".csv, .txt"
-                      ref={userFileInputRef}
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleFileImport(e.target.files[0], "users")
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <Label
-                      htmlFor="userFile"
-                      className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-2 text-sm"
-                    >
-                      Bestand kiezen
-                    </Label>
-                    <Button type="button" variant="outline" onClick={() => exportTemplate("users")} className="text-sm">
-                      <Download className="mr-1 h-4 w-4" /> Template
-                    </Button>
+                    <div className="space-y-2">
+                      <Label htmlFor="userFile" className="text-sm font-medium block">
+                        Gebruikers importeren
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="file"
+                          id="userFile"
+                          accept=".txt, .csv"
+                          ref={userFileInputRef}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleFileImport(e.target.files[0], "users")
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={() => userFileInputRef.current?.click()}
+                          className="flex-1 text-sm"
+                        >
+                          Bestand kiezen
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => exportTemplate("users")}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm"
+                        >
+                          <Download className="mr-2 h-4 w-4" /> Template
+                        </Button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="rounded-lg border overflow-hidden">
                     <Table>
                       <TableHeader className="bg-gray-50">
                         <TableRow>
-                          <TableHead>Gebruiker</TableHead>
+                          <TableHead>Gebruikersnaam</TableHead>
                           <TableHead className="text-right">Acties</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1452,7 +1470,7 @@ export default function ProductRegistrationApp() {
                                 onClick={() => removeUser(user)}
                                 className="bg-red-600 hover:bg-red-700"
                               >
-                                <Trash2 className="mr-1 h-4 w-4" /> Verwijderen
+                                <Trash2 className="mr-2 h-4 w-4" /> Verwijderen
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -1468,36 +1486,50 @@ export default function ProductRegistrationApp() {
           <TabsContent value="products">
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
-                <CardTitle className="flex items-center gap-2 text-xl">📦 Producten Beheren</CardTitle>
-                <CardDescription>Voeg nieuwe producten toe of verwijder bestaande</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Package className="mr-2 h-5 w-5" /> Producten beheren
+                </CardTitle>
+                <CardDescription>Voeg nieuwe producten toe of verwijder bestaande producten</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
+                    <div className="space-y-2">
                       <Label htmlFor="newProductName" className="text-sm font-medium block">
-                        Nieuw product
+                        Nieuw product toevoegen
                       </Label>
-                      <Input
-                        type="text"
-                        id="newProductName"
-                        placeholder="Naam van het nieuwe product"
-                        value={newProductName}
-                        onChange={(e) => setNewProductName(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="newProductQrCode" className="text-sm font-medium block">
-                        QR Code
-                      </Label>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Input
+                          type="text"
+                          id="newProductName"
+                          placeholder="Naam van het nieuwe product"
+                          value={newProductName}
+                          onChange={(e) => setNewProductName(e.target.value)}
+                          className="sm:flex-1"
+                        />
                         <Input
                           type="text"
                           id="newProductQrCode"
-                          placeholder="Optionele QR code"
+                          placeholder="QR Code (optioneel)"
                           value={newProductQrCode}
                           onChange={(e) => setNewProductQrCode(e.target.value)}
+                          className="sm:flex-1"
                         />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Select value={newProductCategory} onValueChange={setNewProductCategory}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Selecteer categorie" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Geen categorie</SelectItem>
+                            {categories.map((category) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <Button
                           type="button"
                           onClick={() => {
@@ -1507,75 +1539,54 @@ export default function ProductRegistrationApp() {
                           className="bg-blue-600 hover:bg-blue-700"
                           disabled={showQrScanner}
                         >
-                          📱 Scan
+                          📱 Scan QR
+                        </Button>
+                        <Button onClick={addNewProduct} className="bg-amber-600 hover:bg-amber-700">
+                          <Plus className="mr-2 h-4 w-4" /> Toevoegen
                         </Button>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="newProductCategory" className="text-sm font-medium block">
-                        Categorie
+                    <div className="space-y-2">
+                      <Label htmlFor="productFile" className="text-sm font-medium block">
+                        Producten importeren
                       </Label>
-                      <Select value={newProductCategory} onValueChange={setNewProductCategory}>
-                        <SelectTrigger id="newProductCategory">
-                          <SelectValue placeholder="Geen categorie" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Geen categorie</SelectItem>
-                          {categories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-2">
+                        <Input
+                          type="file"
+                          id="productFile"
+                          accept=".txt, .csv"
+                          ref={productFileInputRef}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleFileImport(e.target.files[0], "products")
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={() => productFileInputRef.current?.click()}
+                          className="flex-1 text-sm"
+                        >
+                          Bestand kiezen
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => exportTemplate("products")}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm"
+                        >
+                          <Download className="mr-2 h-4 w-4" /> Template
+                        </Button>
+                      </div>
                     </div>
-                    <div>
-                      <Button type="button" onClick={addNewProduct} className="bg-green-600 hover:bg-green-700 mt-6">
-                        <Plus className="mr-1 h-4 w-4" /> Toevoegen
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="productFile" className="text-sm font-medium">
-                      Importeer producten (CSV)
-                    </Label>
-                    <Input
-                      type="file"
-                      id="productFile"
-                      accept=".csv"
-                      ref={productFileInputRef}
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleFileImport(e.target.files[0], "products")
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <Label
-                      htmlFor="productFile"
-                      className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-2 text-sm"
-                    >
-                      Bestand kiezen
-                    </Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => exportTemplate("products")}
-                      className="text-sm"
-                    >
-                      <Download className="mr-1 h-4 w-4" /> Template
-                    </Button>
                   </div>
 
                   <div className="rounded-lg border overflow-hidden">
                     <Table>
                       <TableHeader className="bg-gray-50">
                         <TableRow>
-                          <TableHead>Product</TableHead>
+                          <TableHead>Productnaam</TableHead>
                           <TableHead className="hidden md:table-cell">QR Code</TableHead>
                           <TableHead className="hidden md:table-cell">Categorie</TableHead>
                           <TableHead className="text-right">Acties</TableHead>
@@ -1595,27 +1606,33 @@ export default function ProductRegistrationApp() {
                               )}
                             </TableCell>
                             <TableCell className="hidden md:table-cell">
-                              {product.categoryId
-                                ? (() => {
-                                    const category = categories.find((c) => c.id === product.categoryId)
-                                    return category ? (
-                                      <Badge variant="outline" className="bg-amber-50 text-amber-800">
-                                        {category.name}
-                                      </Badge>
-                                    ) : (
-                                      "-"
-                                    )
-                                  })()
-                                : "-"}
+                              {product.categoryId ? (
+                                <Badge variant="outline" className="bg-amber-50 text-amber-800">
+                                  {categories.find((c) => c.id === product.categoryId)?.name || "Onbekend"}
+                                </Badge>
+                              ) : (
+                                "-"
+                              )}
                             </TableCell>
                             <TableCell className="text-right">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingProduct(product)
+                                  setShowEditDialog(true)
+                                }}
+                                className="mr-2"
+                              >
+                                <Edit className="mr-2 h-4 w-4" /> Bewerken
+                              </Button>
                               <Button
                                 variant="destructive"
                                 size="sm"
                                 onClick={() => removeProduct(product)}
                                 className="bg-red-600 hover:bg-red-700"
                               >
-                                <Trash2 className="mr-1 h-4 w-4" /> Verwijderen
+                                <Trash2 className="mr-2 h-4 w-4" /> Verwijderen
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -1631,26 +1648,29 @@ export default function ProductRegistrationApp() {
           <TabsContent value="categories">
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
-                <CardTitle className="flex items-center gap-2 text-xl">🗂️ Categorieën Beheren</CardTitle>
-                <CardDescription>Voeg nieuwe categorieën toe of verwijder bestaande</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Package className="mr-2 h-5 w-5" /> Categorieën beheren
+                </CardTitle>
+                <CardDescription>Voeg nieuwe categorieën toe of verwijder bestaande categorieën</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
                       <Label htmlFor="newCategoryName" className="text-sm font-medium block">
-                        Nieuwe categorie
+                        Nieuwe categorie toevoegen
                       </Label>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Input
                           type="text"
                           id="newCategoryName"
                           placeholder="Naam van de nieuwe categorie"
                           value={newCategoryName}
                           onChange={(e) => setNewCategoryName(e.target.value)}
+                          className="sm:flex-1"
                         />
-                        <Button type="button" onClick={addNewCategory} className="bg-green-600 hover:bg-green-700">
-                          <Plus className="mr-1 h-4 w-4" /> Toevoegen
+                        <Button onClick={addNewCategory} className="bg-amber-600 hover:bg-amber-700">
+                          <Plus className="mr-2 h-4 w-4" /> Toevoegen
                         </Button>
                       </div>
                     </div>
@@ -1660,7 +1680,7 @@ export default function ProductRegistrationApp() {
                     <Table>
                       <TableHeader className="bg-gray-50">
                         <TableRow>
-                          <TableHead>Categorie</TableHead>
+                          <TableHead>Categorienaam</TableHead>
                           <TableHead className="text-right">Acties</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1675,7 +1695,7 @@ export default function ProductRegistrationApp() {
                                 onClick={() => removeCategory(category.id)}
                                 className="bg-red-600 hover:bg-red-700"
                               >
-                                <Trash2 className="mr-1 h-4 w-4" /> Verwijderen
+                                <Trash2 className="mr-2 h-4 w-4" /> Verwijderen
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -1691,68 +1711,73 @@ export default function ProductRegistrationApp() {
           <TabsContent value="locations">
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
-                <CardTitle className="flex items-center gap-2 text-xl">📍 Locaties Beheren</CardTitle>
-                <CardDescription>Voeg nieuwe locaties toe of verwijder bestaande</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Package className="mr-2 h-5 w-5" /> Locaties beheren
+                </CardTitle>
+                <CardDescription>Voeg nieuwe locaties toe of verwijder bestaande locaties</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
                       <Label htmlFor="newLocationName" className="text-sm font-medium block">
-                        Nieuwe locatie
+                        Nieuwe locatie toevoegen
                       </Label>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Input
                           type="text"
                           id="newLocationName"
                           placeholder="Naam van de nieuwe locatie"
                           value={newLocationName}
                           onChange={(e) => setNewLocationName(e.target.value)}
+                          className="sm:flex-1"
                         />
-                        <Button type="button" onClick={addNewLocation} className="bg-green-600 hover:bg-green-700">
-                          <Plus className="mr-1 h-4 w-4" /> Toevoegen
+                        <Button onClick={addNewLocation} className="bg-amber-600 hover:bg-amber-700">
+                          <Plus className="mr-2 h-4 w-4" /> Toevoegen
                         </Button>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="locationFile" className="text-sm font-medium">
-                      Importeer locaties (CSV)
-                    </Label>
-                    <Input
-                      type="file"
-                      id="locationFile"
-                      accept=".csv, .txt"
-                      ref={locationFileInputRef}
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleFileImport(e.target.files[0], "locations")
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <Label
-                      htmlFor="locationFile"
-                      className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-2 text-sm"
-                    >
-                      Bestand kiezen
-                    </Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => exportTemplate("locations")}
-                      className="text-sm"
-                    >
-                      <Download className="mr-1 h-4 w-4" /> Template
-                    </Button>
+                    <div className="space-y-2">
+                      <Label htmlFor="locationFile" className="text-sm font-medium block">
+                        Locaties importeren
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="file"
+                          id="locationFile"
+                          accept=".txt, .csv"
+                          ref={locationFileInputRef}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleFileImport(e.target.files[0], "locations")
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={() => locationFileInputRef.current?.click()}
+                          className="flex-1 text-sm"
+                        >
+                          Bestand kiezen
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => exportTemplate("locations")}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm"
+                        >
+                          <Download className="mr-2 h-4 w-4" /> Template
+                        </Button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="rounded-lg border overflow-hidden">
                     <Table>
                       <TableHeader className="bg-gray-50">
                         <TableRow>
-                          <TableHead>Locatie</TableHead>
+                          <TableHead>Locatienaam</TableHead>
                           <TableHead className="text-right">Acties</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1767,7 +1792,7 @@ export default function ProductRegistrationApp() {
                                 onClick={() => removeLocation(location)}
                                 className="bg-red-600 hover:bg-red-700"
                               >
-                                <Trash2 className="mr-1 h-4 w-4" /> Verwijderen
+                                <Trash2 className="mr-2 h-4 w-4" /> Verwijderen
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -1783,68 +1808,73 @@ export default function ProductRegistrationApp() {
           <TabsContent value="purposes">
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
-                <CardTitle className="flex items-center gap-2 text-xl">🎯 Doelen Beheren</CardTitle>
-                <CardDescription>Voeg nieuwe doelen toe of verwijder bestaande</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Package className="mr-2 h-5 w-5" /> Doelen beheren
+                </CardTitle>
+                <CardDescription>Voeg nieuwe doelen toe of verwijder bestaande doelen</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
                       <Label htmlFor="newPurposeName" className="text-sm font-medium block">
-                        Nieuw doel
+                        Nieuw doel toevoegen
                       </Label>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Input
                           type="text"
                           id="newPurposeName"
                           placeholder="Naam van het nieuwe doel"
                           value={newPurposeName}
                           onChange={(e) => setNewPurposeName(e.target.value)}
+                          className="sm:flex-1"
                         />
-                        <Button type="button" onClick={addNewPurpose} className="bg-green-600 hover:bg-green-700">
-                          <Plus className="mr-1 h-4 w-4" /> Toevoegen
+                        <Button onClick={addNewPurpose} className="bg-amber-600 hover:bg-amber-700">
+                          <Plus className="mr-2 h-4 w-4" /> Toevoegen
                         </Button>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="purposeFile" className="text-sm font-medium">
-                      Importeer doelen (CSV)
-                    </Label>
-                    <Input
-                      type="file"
-                      id="purposeFile"
-                      accept=".csv, .txt"
-                      ref={purposeFileInputRef}
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleFileImport(e.target.files[0], "purposes")
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <Label
-                      htmlFor="purposeFile"
-                      className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-2 text-sm"
-                    >
-                      Bestand kiezen
-                    </Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => exportTemplate("purposes")}
-                      className="text-sm"
-                    >
-                      <Download className="mr-1 h-4 w-4" /> Template
-                    </Button>
+                    <div className="space-y-2">
+                      <Label htmlFor="purposeFile" className="text-sm font-medium block">
+                        Doelen importeren
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="file"
+                          id="purposeFile"
+                          accept=".txt, .csv"
+                          ref={purposeFileInputRef}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleFileImport(e.target.files[0], "purposes")
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={() => purposeFileInputRef.current?.click()}
+                          className="flex-1 text-sm"
+                        >
+                          Bestand kiezen
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => exportTemplate("purposes")}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm"
+                        >
+                          <Download className="mr-2 h-4 w-4" /> Template
+                        </Button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="rounded-lg border overflow-hidden">
                     <Table>
                       <TableHeader className="bg-gray-50">
                         <TableRow>
-                          <TableHead>Doel</TableHead>
+                          <TableHead>Doelnaam</TableHead>
                           <TableHead className="text-right">Acties</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1859,7 +1889,7 @@ export default function ProductRegistrationApp() {
                                 onClick={() => removePurpose(purpose)}
                                 className="bg-red-600 hover:bg-red-700"
                               >
-                                <Trash2 className="mr-1 h-4 w-4" /> Verwijderen
+                                <Trash2 className="mr-2 h-4 w-4" /> Verwijderen
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -1875,281 +1905,258 @@ export default function ProductRegistrationApp() {
           <TabsContent value="statistics">
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
-                <CardTitle className="flex items-center gap-2 text-xl">📊 Statistieken en Overzichten</CardTitle>
-                <CardDescription>Bekijk de statistieken van productregistraties</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <BarChart3 className="mr-2 h-5 w-5" /> Statistieken
+                </CardTitle>
+                <CardDescription>Bekijk de statistieken van de productregistraties</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <Card className="shadow-sm">
                     <CardHeader>
-                      <CardTitle className="text-lg font-semibold">
-                        <Package className="mr-2 inline-block h-5 w-5" />
-                        Totaal Registraties
-                      </CardTitle>
+                      <CardTitle>Totaal aantal registraties</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold text-gray-800">{stats.totalRegistrations}</div>
-                      <p className="text-sm text-gray-500">Aantal geregistreerde producten</p>
+                      <div className="text-2xl font-bold">{stats.totalRegistrations}</div>
                     </CardContent>
                   </Card>
 
                   <Card className="shadow-sm">
                     <CardHeader>
-                      <CardTitle className="text-lg font-semibold">
-                        <Users className="mr-2 inline-block h-5 w-5" />
-                        Unieke Gebruikers
-                      </CardTitle>
+                      <CardTitle>Unieke gebruikers</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold text-gray-800">{stats.uniqueUsers}</div>
-                      <p className="text-sm text-gray-500">
-                        Aantal unieke gebruikers die producten hebben geregistreerd
-                      </p>
+                      <div className="text-2xl font-bold">{stats.uniqueUsers}</div>
                     </CardContent>
                   </Card>
 
                   <Card className="shadow-sm">
                     <CardHeader>
-                      <CardTitle className="text-lg font-semibold">
-                        <BarChart3 className="mr-2 inline-block h-5 w-5" />
-                        Unieke Producten
-                      </CardTitle>
+                      <CardTitle>Unieke producten</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold text-gray-800">{stats.uniqueProducts}</div>
-                      <p className="text-sm text-gray-500">Aantal unieke producten die zijn geregistreerd</p>
+                      <div className="text-2xl font-bold">{stats.uniqueProducts}</div>
                     </CardContent>
                   </Card>
-                </div>
 
-                <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4">Top Gebruikers (Registraties)</h2>
-                    {stats.topUsers.length > 0 ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Gebruiker</TableHead>
-                            <TableHead className="text-right">Aantal</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {stats.topUsers.map(([user, count]) => (
-                            <TableRow key={user}>
-                              <TableCell>{user}</TableCell>
-                              <TableCell className="text-right">{count}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <p className="text-gray-500">Geen data beschikbaar</p>
-                    )}
-                  </div>
+                  <Card className="shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Top 5 Gebruikers (Registraties)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="list-none space-y-2">
+                        {stats.topUsers.map(([user, count]) => (
+                          <li key={user} className="flex justify-between items-center">
+                            <span>{user}</span>
+                            <Badge className="bg-amber-50 text-amber-800">{count}</Badge>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
 
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4">Top Producten (Registraties)</h2>
-                    {stats.topProducts.length > 0 ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Product</TableHead>
-                            <TableHead className="text-right">Aantal</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {stats.topProducts.map(([product, count]) => (
-                            <TableRow key={product}>
-                              <TableCell>{product}</TableCell>
-                              <TableCell className="text-right">{count}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <p className="text-gray-500">Geen data beschikbaar</p>
-                    )}
-                  </div>
-                </div>
+                  <Card className="shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Top 5 Producten (Registraties)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="list-none space-y-2">
+                        {stats.topProducts.map(([product, count]) => (
+                          <li key={product} className="flex justify-between items-center">
+                            <span>{product}</span>
+                            <Badge className="bg-amber-50 text-amber-800">{count}</Badge>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
 
-                <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4">Top Locaties (Registraties)</h2>
-                    {stats.topLocations.length > 0 ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Locatie</TableHead>
-                            <TableHead className="text-right">Aantal</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {stats.topLocations.map(([location, count]) => (
-                            <TableRow key={location}>
-                              <TableCell>{location}</TableCell>
-                              <TableCell className="text-right">{count}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <p className="text-gray-500">Geen data beschikbaar</p>
-                    )}
-                  </div>
+                  <Card className="shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Top 5 Locaties (Registraties)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="list-none space-y-2">
+                        {stats.topLocations.map(([location, count]) => (
+                          <li key={location} className="flex justify-between items-center">
+                            <span>{location}</span>
+                            <Badge className="bg-amber-50 text-amber-800">{count}</Badge>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
 
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4">Recente Activiteit</h2>
-                    {stats.recentActivity.length > 0 ? (
+                  <Card className="col-span-1 md:col-span-2 lg:col-span-3 shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Recente Activiteit</CardTitle>
+                    </CardHeader>
+                    <CardContent>
                       <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Datum</TableHead>
+                            <TableHead>Tijd</TableHead>
                             <TableHead>Gebruiker</TableHead>
                             <TableHead>Product</TableHead>
                             <TableHead>Locatie</TableHead>
+                            <TableHead>Doel</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {stats.recentActivity.map((entry) => (
                             <TableRow key={entry.id}>
                               <TableCell>{entry.date}</TableCell>
+                              <TableCell>{entry.time}</TableCell>
                               <TableCell>{entry.user}</TableCell>
                               <TableCell>{entry.product}</TableCell>
                               <TableCell>{entry.location}</TableCell>
+                              <TableCell>{entry.purpose}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
-                    ) : (
-                      <p className="text-gray-500">Geen recente activiteit</p>
-                    )}
-                  </div>
+                    </CardContent>
+                  </Card>
                 </div>
 
                 <div className="mt-8">
-                  <h2 className="text-xl font-semibold mb-4">Registraties per Maand</h2>
+                  <h2 className="text-xl font-semibold mb-4">Registraties per dag</h2>
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={generateMonthlyData(entries)}>
+                    <BarChart
+                      data={entries.reduce((acc: any, entry) => {
+                        const date = entry.date
+                        if (!acc.find((item: any) => item.date === date)) {
+                          acc.push({ date, count: 0 })
+                        }
+                        acc.find((item: any) => item.date === date).count++
+                        return acc
+                      }, [])}
+                    >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
+                      <XAxis dataKey="date" />
                       <YAxis />
                       <Tooltip />
-                      <Bar dataKey="registrations" fill="#f97316" />
+                      <Bar dataKey="count" fill="#8884d8" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
 
                 <div className="mt-8">
-                  <h2 className="text-xl font-semibold mb-4">Product Registratie Verdeling</h2>
-                  <ResponsiveContainer width="100%" height={400}>
+                  <h2 className="text-xl font-semibold mb-4">Product Registraties</h2>
+                  <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
-                        data={generateProductData(products, entries)}
-                        dataKey="value"
-                        nameKey="name"
+                        data={entries.reduce((acc: any, entry) => {
+                          const product = entry.product
+                          if (!acc.find((item: any) => item.product === product)) {
+                            acc.push({ product, count: 0 })
+                          }
+                          acc.find((item: any) => item.product === product).count++
+                          return acc
+                        }, [])}
+                        dataKey="count"
+                        nameKey="product"
                         cx="50%"
                         cy="50%"
-                        outerRadius={160}
+                        outerRadius={80}
                         fill="#8884d8"
                         label
                       >
-                        {generateProductData(products, entries).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
+                        {entries
+                          .reduce((acc: any, entry) => {
+                            const product = entry.product
+                            if (!acc.find((item: any) => item.product === product)) {
+                              acc.push({ product, count: 0 })
+                            }
+                            acc.find((item: any) => item.product === product).count++
+                            return acc
+                          }, [])
+                          .map((entry: any, index: number) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={`#${Math.floor(Math.random() * 16777215).toString(16)}`}
+                            />
+                          ))}
                       </Pie>
                       <Tooltip />
                     </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="mt-8">
-                  <h2 className="text-xl font-semibold mb-4">Registraties per Dag</h2>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={generateDailyData(entries)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="registrations" stroke="#82ca9d" />
-                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
 
-      {showQrScanner && (
-        <div className="fixed top-0 left-0 w-full h-full bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-            <h2 className="text-2xl font-semibold mb-4">QR Code Scanner</h2>
-            {isScanning ? (
-              <>
-                {navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? (
-                  <>
-                    <video ref={videoRef} className="w-full aspect-video" autoPlay muted playsInline></video>
-                    <canvas ref={canvasRef} className="hidden"></canvas>
-                  </>
-                ) : (
-                  <p className="text-red-500">Camera niet ondersteund</p>
-                )}
-              </>
-            ) : (
-              <p className="text-gray-600">Camera wordt geladen...</p>
-            )}
+        {/* QR Scanner Modal */}
+        {showQrScanner && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h2 className="text-lg font-semibold mb-4">QR Code Scanner</h2>
+              {isScanning ? (
+                <>
+                  {navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? (
+                    <>
+                      <video ref={videoRef} className="w-full aspect-video" autoPlay muted playsInline />
+                      <canvas ref={canvasRef} className="hidden" />
+                    </>
+                  ) : (
+                    <p>Camera niet ondersteund, voer handmatig in.</p>
+                  )}
+                </>
+              ) : (
+                <p>Camera toegang geweigerd, voer handmatig in.</p>
+              )}
 
-            <div className="mt-4 flex justify-between">
-              <Button variant="secondary" onClick={scanQrCode}>
-                Handmatig invoeren
-              </Button>
-              <Button variant="destructive" onClick={stopQrScanner}>
-                Annuleren
-              </Button>
+              <div className="mt-4 flex justify-between">
+                <Button variant="secondary" onClick={scanQrCode}>
+                  Handmatig invoeren
+                </Button>
+                <Button variant="ghost" onClick={stopQrScanner}>
+                  Annuleren
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Edit Product Modal */}
+        {showEditDialog && editingProduct && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h2 className="text-lg font-semibold mb-4">Product Bewerken</h2>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="editProductName">Naam</Label>
+                  <Input
+                    type="text"
+                    id="editProductName"
+                    value={editingProduct.name}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editProductQrCode">QR Code</Label>
+                  <Input
+                    type="text"
+                    id="editProductQrCode"
+                    value={editingProduct.qrcode || ""}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, qrcode: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Button onClick={updateProduct} className="bg-amber-600 hover:bg-amber-700">
+                    Opslaan
+                  </Button>
+                  <Button variant="ghost" onClick={() => setShowEditDialog(false)}>
+                    Annuleren
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
-}
-
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#A8A495"]
-
-const generateMonthlyData = (entries: RegistrationEntry[]) => {
-  const monthlyData: { [key: string]: number } = {}
-
-  entries.forEach((entry) => {
-    const date = new Date(entry.timestamp)
-    const month = date.toLocaleString("default", { month: "long" })
-    monthlyData[month] = (monthlyData[month] || 0) + 1
-  })
-
-  return Object.entries(monthlyData).map(([month, registrations]) => ({ month, registrations }))
-}
-
-const generateProductData = (products: Product[], entries: RegistrationEntry[]) => {
-  const productData: { [key: string]: number } = {}
-
-  entries.forEach((entry) => {
-    productData[entry.product] = (productData[entry.product] || 0) + 1
-  })
-
-  return products
-    .map((product) => ({
-      name: product.name,
-      value: productData[product.name] || 0,
-    }))
-    .sort((a, b) => b.value - a.value)
-}
-
-const generateDailyData = (entries: RegistrationEntry[]) => {
-  const dailyData: { [key: string]: number } = {}
-
-  entries.forEach((entry) => {
-    const date = new Date(entry.timestamp).toLocaleDateString()
-    dailyData[date] = (dailyData[date] || 0) + 1
-  })
-
-  return Object.entries(dailyData).map(([date, registrations]) => ({ date, registrations }))
 }
