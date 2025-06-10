@@ -105,6 +105,9 @@ export default function ProductRegistrationApp() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
 
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [showEditCategoryDialog, setShowEditCategoryDialog] = useState(false)
+
   // Laad alle data bij start
   useEffect(() => {
     loadAllData()
@@ -808,6 +811,27 @@ export default function ProductRegistrationApp() {
       } catch (error) {
         console.error("Onverwachte fout bij toevoegen categorie:", error)
         setImportError("Fout bij toevoegen categorie")
+      }
+    }
+  }
+
+  const updateCategory = async () => {
+    if (editingCategory && editingCategory.id) {
+      try {
+        console.log("updateCategory aangeroepen voor:", editingCategory)
+
+        // Update lokaal eerst
+        setCategories((prevCategories) =>
+          prevCategories.map((c) => (c.id === editingCategory.id ? editingCategory : c)),
+        )
+
+        setEditingCategory(null)
+        setShowEditCategoryDialog(false)
+        setImportMessage("✅ Categorie bijgewerkt!")
+        setTimeout(() => setImportMessage(""), 2000)
+      } catch (error) {
+        console.error("Fout bij bijwerken categorie:", error)
+        setImportError("Fout bij bijwerken categorie")
       }
     }
   }
@@ -1690,6 +1714,17 @@ export default function ProductRegistrationApp() {
                             <TableCell>{category.name}</TableCell>
                             <TableCell className="text-right">
                               <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingCategory(category)
+                                  setShowEditCategoryDialog(true)
+                                }}
+                                className="mr-2"
+                              >
+                                <Edit className="mr-2 h-4 w-4" /> Bewerken
+                              </Button>
+                              <Button
                                 variant="destructive"
                                 size="sm"
                                 onClick={() => removeCategory(category.id)}
@@ -2149,6 +2184,34 @@ export default function ProductRegistrationApp() {
                     Opslaan
                   </Button>
                   <Button variant="ghost" onClick={() => setShowEditDialog(false)}>
+                    Annuleren
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Category Modal */}
+        {showEditCategoryDialog && editingCategory && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h2 className="text-lg font-semibold mb-4">Categorie Bewerken</h2>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="editCategoryName">Naam</Label>
+                  <Input
+                    type="text"
+                    id="editCategoryName"
+                    value={editingCategory.name}
+                    onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={updateCategory} className="bg-amber-600 hover:bg-amber-700">
+                    Opslaan
+                  </Button>
+                  <Button variant="ghost" onClick={() => setShowEditCategoryDialog(false)}>
                     Annuleren
                   </Button>
                 </div>
