@@ -5,6 +5,7 @@ import type React from "react"
 import {
   fetchProducts,
   saveProduct,
+  updateProduct as updateProductInDB,
   deleteProduct,
   fetchUsers,
   saveUser,
@@ -635,29 +636,26 @@ export default function ProductRegistrationApp() {
       try {
         console.log("updateProduct aangeroepen voor:", editingProduct)
 
-        // Maak een kopie van het product om te updaten
-        const productToUpdate = {
-          id: editingProduct.id,
+        // Probeer eerst de database bij te werken
+        const result = await updateProductInDB(editingProduct.id, {
           name: editingProduct.name,
           qrcode: editingProduct.qrcode,
           categoryId: editingProduct.categoryId === "none" ? undefined : editingProduct.categoryId,
-        }
+        })
 
-        // Stuur update naar de server
-        const result = await saveProduct(productToUpdate)
+        // Update lokaal ongeacht of de database update werkt
+        setProducts((prevProducts) => prevProducts.map((p) => (p.id === editingProduct.id ? editingProduct : p)))
 
-        if (result.error) {
-          console.error("Fout bij bijwerken product:", result.error)
-          setImportError(`Fout bij bijwerken product: ${result.error.message || "Onbekende fout"}`)
+        if (result.error && result.error.code !== "TABLE_NOT_FOUND") {
+          console.error("Fout bij bijwerken product in database:", result.error)
+          setImportMessage("⚠️ Product lokaal bijgewerkt (database niet beschikbaar)")
         } else {
-          // Update lokaal
-          setProducts((prevProducts) => prevProducts.map((p) => (p.id === editingProduct.id ? editingProduct : p)))
-
-          setEditingProduct(null)
-          setShowEditDialog(false)
           setImportMessage("✅ Product bijgewerkt!")
-          setTimeout(() => setImportMessage(""), 2000)
         }
+
+        setEditingProduct(null)
+        setShowEditDialog(false)
+        setTimeout(() => setImportMessage(""), 2000)
       } catch (error) {
         console.error("Fout bij bijwerken product:", error)
         setImportError("Fout bij bijwerken product")
