@@ -95,6 +95,7 @@ export default function ProductRegistrationApp() {
   const [newUserName, setNewUserName] = useState("")
   const [newProductName, setNewProductName] = useState("")
   const [newProductQrCode, setNewProductQrCode] = useState("")
+  const [newProductCategory, setNewProductCategory] = useState("none")
   const [newLocationName, setNewLocationName] = useState("")
   const [newPurposeName, setNewPurposeName] = useState("")
   const [newCategoryName, setNewCategoryName] = useState("")
@@ -1525,6 +1526,24 @@ const removeCategory = async (categoryId: string) => {
                           </Button>
                         </div>
                       </div>
+                      <div className="sm:col-span-3">
+  <Label htmlFor="newProductCategory" className="block text-sm font-medium mb-1">
+    Categorie (optioneel)
+  </Label>
+  <Select value={newProductCategory} onValueChange={setNewProductCategory}>
+    <SelectTrigger id="newProductCategory">
+      <SelectValue placeholder="Selecteer een categorie" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="none">Geen categorie</SelectItem>
+      {categories.map((category) => (
+        <SelectItem key={category.id} value={category.id}>
+          {category.name}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
                       <div className="sm:col-span-3">
                         <Button onClick={addNewProduct} className="bg-amber-600 hover:bg-amber-700">
                           <Plus className="mr-1 h-4 w-4" /> Product Toevoegen
