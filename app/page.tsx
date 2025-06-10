@@ -1006,7 +1006,18 @@ export default function ProductRegistrationApp() {
 
   // Show login form if not authenticated
   if (!user) {
-    return <LoginForm onLogin={() => setUser(user)} />
+    return (
+      <LoginForm
+        onLogin={() => {
+          // Simulate login by setting a mock user
+          setUser({
+            email: "demo@example.com",
+            name: "Demo User",
+            role: "admin",
+          })
+        }}
+      />
+    )
   }
 
   // Show main app if authenticated
@@ -1657,18 +1668,19 @@ export default function ProductRegistrationApp() {
                               )}
                             </TableCell>
                             <TableCell className="hidden md:table-cell">
-                              {product.categoryId
-                                ? (() => {
-                                    const category = categories.find((c) => c.id === product.categoryId)
-                                    return category ? (
-                                      <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
-                                        {category.name}
-                                      </Badge>
-                                    ) : (
-                                      "-"
-                                    )
-                                  })()
-                                : "-"}
+                              {(() => {
+                                if (product.categoryId) {
+                                  const category = categories.find((c) => c.id === product.categoryId)
+                                  return category ? (
+                                    <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
+                                      {category.name}
+                                    </Badge>
+                                  ) : (
+                                    "-"
+                                  )
+                                }
+                                return "-"
+                              })()}
                             </TableCell>
                             <TableCell className="text-right">
                               <Button
@@ -1710,7 +1722,11 @@ export default function ProductRegistrationApp() {
                     fill="currentColor"
                     className="w-5 h-5 mr-2"
                   >
-                    <path d="M21.731 2.039c.775-.399 1.72-.032 2.096.805l1.497 5.98a1.5 1.5 0 01-.21 1.744l-.743 2.982c-.151.607-.928.607-1.079 0l-.743-2.982a1.5 1.5 0 01-.21-1.744l1.497-5.98c.376-.837-.09-1.196-.851-.805l-8.94 4.614c-.644.333-1.588.333-2.232 0L2.269 2.039c-.761-.399-1.227.032-.851.805l1.497 5.98a1.5 1.5 0 01-.21 1.744l-.743 2.982c-.151.607-.928.607-1.079 0l-.743-2.982a1.5 1.5 0 01-.21-1.744l1.497-5.98c.376-.837 1.32-.436 2.081.367zM6.354 10.854a.5.5 0 00-.707 0l-2.121 2.121a.5.5 0 000 .707l2.121 2.121a.5.5 0 00.707 0l2.121-2.121a.5.5 0 000-.707l-2.121-2.121zM17.646 10.854a.5.5 0 01.707 0l2.121 2.121a.5.5 0 010 .707l-2.121 2.121a.5.5 0 01-.707 0l-2.121-2.121a.5.5 0 010-.707l2.121-2.121z" />
+                    <path
+                      fillRule="evenodd"
+                      d="M3 6a3 3 0 013-3h12a3 3 0 013 3v12a3 3 0 01-3 3H6a3 3 0 01-3-3V6zm11.473 3.362a.75.75 0 01-.094 1.09l-3 3a.75.75 0 11-1.06-1.06l3-3a.75.75 0 011.154 0zM12 13.5a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5zm-5.372 1.138a.75.75 0 111.06 1.06l-3 3a.75.75 0 11-1.06-1.06l3-3z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   Beheer Categorieën
                 </CardTitle>
@@ -1792,7 +1808,7 @@ export default function ProductRegistrationApp() {
                   >
                     <path
                       fillRule="evenodd"
-                      d="M11.54 22.351l.07.04.028.016a.25.25 0 00.273-.095l.063-.06a22.947 22.947 0 003.892-6.947c.09-.13.237-.26.408-.37a1.5 1.5 0 011.154-.075L20.5 12.25l-.893-.894.343-.343-7-7a1.5 1.5 0 00-2.122 0l-7 7.001.342.341L3.5 12.25l4.555 4.553a1.5 1.5 0 011.154.075.481.481 0 00.408.37a22.947 22.947 0 003.892 6.947l.063.06c.082.047.196.005.273-.095l.028-.016.07-.04zm-5.14-1.23a.75.75 0 01-.793.03l-.042-.02a19.576 19.576 0 00-3.386-6.072c-.04-.058-.158-.112-.283-.15a.75.75 0 01-.118-.975l.895-.895 5.664-5.663a.75.75 0 011.06 0l5.664 5.663.895.895a.75.75 0 01-.118.975c-.125.038-.243.092-.283.15a19.576 19.576 0 00-3.386 6.072l-.042.02a.75.75 0 01-.793-.03z"
+                      d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM6.75 12c0-2.07 1.68-3.75 3.75-3.75s3.75 1.68 3.75 3.75-1.68 3.75-3.75 3.75-3.75-1.68-3.75-3.75z"
                       clipRule="evenodd"
                     />
                   </svg>
@@ -1817,32 +1833,6 @@ export default function ProductRegistrationApp() {
                         />
                         <Button type="button" onClick={addNewLocation} className="bg-blue-600 hover:bg-blue-700">
                           <Plus className="h-4 w-4 mr-2" /> Toevoegen
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="locationImport" className="text-sm font-medium block">
-                        Importeer Locaties (CSV/TXT)
-                      </Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="file"
-                          id="locationImport"
-                          accept=".txt,.csv"
-                          ref={locationFileInputRef}
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              handleFileImport(e.target.files[0], "locations")
-                            }
-                          }}
-                          className="hidden"
-                        />
-                        <Button type="button" onClick={() => locationFileInputRef.current?.click()} variant="secondary">
-                          <Download className="h-4 w-4 mr-2" /> Bestand Kiezen
-                        </Button>
-                        <Button type="button" onClick={() => exportTemplate("locations")} variant="outline">
-                          <Download className="h-4 w-4 mr-2" /> Template
                         </Button>
                       </div>
                     </div>
@@ -1892,7 +1882,7 @@ export default function ProductRegistrationApp() {
                   >
                     <path
                       fillRule="evenodd"
-                      d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM8.547 9.505a.75.75 0 00-.69.956 3.75 3.75 0 007.337 0 .75.75 0 10-1.5-.058 2.25 2.25 0 01-4.337 0 .75.75 0 00-.69-.956zm3.984 4.496a.75.75 0 00-1.498 0 .75.75 0 011.498 0z"
+                      d="M12 2.25c-1.94 0-3.75 1.11-4.636 2.835A7.496 7.496 0 003 12.25c0 3.934 3.009 7.137 6.864 7.465C10.24 20.88 11.075 21.75 12 21.75c.925 0 1.76-.87 2.136-2.035A7.496 7.496 0 0021 12.25c0-3.934-3.009-7.137-6.864-7.465C13.76 3.36 11.94 2.25 10 2.25zM8.25 9a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm3.75 3a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm-3.75 3a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z"
                       clipRule="evenodd"
                     />
                   </svg>
@@ -1917,32 +1907,6 @@ export default function ProductRegistrationApp() {
                         />
                         <Button type="button" onClick={addNewPurpose} className="bg-blue-600 hover:bg-blue-700">
                           <Plus className="h-4 w-4 mr-2" /> Toevoegen
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="purposeImport" className="text-sm font-medium block">
-                        Importeer Doelen (CSV/TXT)
-                      </Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="file"
-                          id="purposeImport"
-                          accept=".txt,.csv"
-                          ref={purposeFileInputRef}
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              handleFileImport(e.target.files[0], "purposes")
-                            }
-                          }}
-                          className="hidden"
-                        />
-                        <Button type="button" onClick={() => purposeFileInputRef.current?.click()} variant="secondary">
-                          <Download className="h-4 w-4 mr-2" /> Bestand Kiezen
-                        </Button>
-                        <Button type="button" onClick={() => exportTemplate("purposes")} variant="outline">
-                          <Download className="h-4 w-4 mr-2" /> Template
                         </Button>
                       </div>
                     </div>
@@ -2014,234 +1978,225 @@ export default function ProductRegistrationApp() {
                       <div className="text-3xl font-bold">{stats.uniqueProducts}</div>
                     </CardContent>
                   </Card>
-                </div>
 
-                <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4">Top 5 Gebruikers</h2>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={stats.topUsers.map(([user, count]) => ({ user, count }))}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="user" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="count" fill="#f59e0b" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <Card className="shadow-sm col-span-1 md:col-span-2 lg:col-span-3">
+                    <CardHeader>
+                      <CardTitle>Top 5 Gebruikers (Registraties)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={stats.topUsers}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="0" />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="1" fill="#f97316" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
 
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4">Top 5 Producten</h2>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={stats.topProducts.map(([product, count]) => ({ product, count }))}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="product" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="count" fill="#f59e0b" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
+                  <Card className="shadow-sm col-span-1 md:col-span-2 lg:col-span-3">
+                    <CardHeader>
+                      <CardTitle>Top 5 Producten (Registraties)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={stats.topProducts}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="0" />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="1" fill="#f97316" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
 
-                <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4">Top 5 Locaties</h2>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={stats.topLocations.map(([location, count]) => ({ location, count }))}
-                          dataKey="count"
-                          nameKey="location"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={120}
-                          fill="#f59e0b"
-                          label
-                        >
-                          {stats.topLocations.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <Card className="shadow-sm col-span-1 md:col-span-2 lg:col-span-3">
+                    <CardHeader>
+                      <CardTitle>Top 5 Locaties (Registraties)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie
+                            data={stats.topLocations}
+                            dataKey="1"
+                            nameKey="0"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            fill="#f97316"
+                            label
+                          >
+                            {stats.topLocations.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={`#${((index + 1) * 377777).toString(16)}`} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
 
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4">Recente Activiteit</h2>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Gebruiker</TableHead>
-                          <TableHead>Product</TableHead>
-                          <TableHead>Datum</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {stats.recentActivity.map((activity) => (
-                          <TableRow key={activity.id}>
-                            <TableCell>{activity.user}</TableCell>
-                            <TableCell>{activity.product}</TableCell>
-                            <TableCell>{activity.date}</TableCell>
+                  <Card className="shadow-sm col-span-1 md:col-span-2 lg:col-span-3">
+                    <CardHeader>
+                      <CardTitle>Recente Activiteit</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Gebruiker</TableHead>
+                            <TableHead>Product</TableHead>
+                            <TableHead>Locatie</TableHead>
+                            <TableHead>Tijd</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {stats.recentActivity.map((activity) => (
+                            <TableRow key={activity.id}>
+                              <TableCell>{activity.user}</TableCell>
+                              <TableCell>{activity.product}</TableCell>
+                              <TableCell>{activity.location}</TableCell>
+                              <TableCell>{activity.time}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
 
-        {/* Edit Product Dialog */}
+        {/* Edit Product Modal */}
         {showEditDialog && editingProduct && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <div className="mt-3 text-center">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Product Bewerken</h3>
-                <div className="px-7 py-3">
-                  <Label htmlFor="editProductName" className="text-sm font-medium block">
-                    Product Naam
-                  </Label>
-                  <Input
-                    type="text"
-                    id="editProductName"
-                    value={editingProduct.name}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                    className="mt-1"
-                  />
-
-                  <Label htmlFor="editProductQrCode" className="text-sm font-medium block mt-3">
-                    QR Code
-                  </Label>
-                  <Input
-                    type="text"
-                    id="editProductQrCode"
-                    value={editingProduct.qrcode || ""}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, qrcode: e.target.value })}
-                    className="mt-1"
-                  />
-
-                  <Label htmlFor="editProductCategory" className="text-sm font-medium block mt-3">
-                    Categorie
-                  </Label>
-                  <Select
-                    value={editingProduct.categoryId || "none"}
-                    onValueChange={(value) => setEditingProduct({ ...editingProduct, categoryId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecteer categorie (optioneel)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Geen categorie</SelectItem>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-75">
+            <Card className="w-full max-w-md p-6">
+              <CardHeader className="border-b">
+                <CardTitle className="text-lg font-semibold">Product Bewerken</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="editProductName">Product Naam</Label>
+                    <Input
+                      type="text"
+                      id="editProductName"
+                      value={editingProduct.name}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="editProductQrCode">QR Code</Label>
+                    <Input
+                      type="text"
+                      id="editProductQrCode"
+                      value={editingProduct.qrcode || ""}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, qrcode: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="editProductCategory">Categorie</Label>
+                    <Select
+                      value={editingProduct.categoryId || "none"}
+                      onValueChange={(value) => setEditingProduct({ ...editingProduct, categoryId: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecteer categorie" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Geen categorie</SelectItem>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" onClick={() => setShowEditDialog(false)}>
+                      Annuleren
+                    </Button>
+                    <Button onClick={updateProduct}>Opslaan</Button>
+                  </div>
                 </div>
-                <div className="items-center px-4 py-3">
-                  <Button
-                    variant="secondary"
-                    className="px-4 py-2 bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm font-medium rounded-md"
-                    onClick={() => setShowEditDialog(false)}
-                  >
-                    Annuleren
-                  </Button>
-                  <Button
-                    className="ml-2 px-4 py-2 bg-green-500 text-white hover:bg-green-700 text-sm font-medium rounded-md"
-                    onClick={updateProduct}
-                  >
-                    Opslaan
-                  </Button>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
-        {/* Edit Category Dialog */}
+        {/* Edit Category Modal */}
         {showEditCategoryDialog && editingCategory && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <div className="mt-3 text-center">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Categorie Bewerken</h3>
-                <div className="px-7 py-3">
-                  <Label htmlFor="editCategoryName" className="text-sm font-medium block">
-                    Categorie Naam
-                  </Label>
-                  <Input
-                    type="text"
-                    id="editCategoryName"
-                    value={editingCategory.name}
-                    onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
-                    className="mt-1"
-                  />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-75">
+            <Card className="w-full max-w-md p-6">
+              <CardHeader className="border-b">
+                <CardTitle className="text-lg font-semibold">Categorie Bewerken</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="editCategoryName">Categorie Naam</Label>
+                    <Input
+                      type="text"
+                      id="editCategoryName"
+                      value={editingCategory.name}
+                      onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" onClick={() => setShowEditCategoryDialog(false)}>
+                      Annuleren
+                    </Button>
+                    <Button onClick={updateCategory}>Opslaan</Button>
+                  </div>
                 </div>
-                <div className="items-center px-4 py-3">
-                  <Button
-                    variant="secondary"
-                    className="px-4 py-2 bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm font-medium rounded-md"
-                    onClick={() => setShowEditCategoryDialog(false)}
-                  >
-                    Annuleren
-                  </Button>
-                  <Button
-                    className="ml-2 px-4 py-2 bg-green-500 text-white hover:bg-green-700 text-sm font-medium rounded-md"
-                    onClick={updateCategory}
-                  >
-                    Opslaan
-                  </Button>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* QR Scanner Modal */}
         {showQrScanner && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-            <div className="relative bg-white rounded-lg shadow-lg max-w-md w-full">
-              <div className="flex items-center justify-between p-4 border-b rounded-t">
-                <h3 className="text-lg font-semibold text-gray-900">QR Code Scanner</h3>
-                <Button variant="ghost" onClick={stopQrScanner}>
-                  <X className="w-5 h-5" />
-                </Button>
-              </div>
-              <div className="p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-75">
+            <Card className="w-full max-w-md p-6">
+              <CardHeader className="border-b">
+                <CardTitle className="text-lg font-semibold">QR Code Scanner</CardTitle>
+              </CardHeader>
+              <CardContent>
                 {isScanning ? (
-                  <>
-                    {navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? (
-                      <div className="overflow-hidden rounded-lg">
-                        <video ref={videoRef} className="w-full" autoPlay muted playsInline />
-                        <canvas ref={canvasRef} className="hidden" />
-                      </div>
-                    ) : (
-                      <p className="text-center text-gray-500">Camera niet ondersteund, voer handmatig in.</p>
-                    )}
-                  </>
+                  <div className="relative">
+                    <video ref={videoRef} className="w-full aspect-video" autoPlay muted playsInline />
+                    <canvas ref={canvasRef} className="absolute inset-0"></canvas>
+                  </div>
                 ) : (
-                  <p className="text-center text-gray-500">
-                    Camera toegang geweigerd of niet beschikbaar. Voer de QR code handmatig in.
-                  </p>
+                  <div className="text-center">
+                    {navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? (
+                      <>
+                        <p className="mb-4">Camera toegang is niet toegestaan of er is geen camera beschikbaar.</p>
+                        <Button onClick={scanQrCode}>Handmatig invoeren</Button>
+                      </>
+                    ) : (
+                      <p className="mb-4">Uw browser ondersteunt geen camera toegang. Voer de QR code handmatig in.</p>
+                    )}
+                    <Button onClick={scanQrCode}>Handmatig invoeren</Button>
+                  </div>
                 )}
-                <Button
-                  onClick={scanQrCode}
-                  className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                >
-                  Handmatig invoeren
-                </Button>
-              </div>
-            </div>
+                <div className="flex justify-end mt-4">
+                  <Button variant="ghost" onClick={stopQrScanner}>
+                    Sluiten
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
     </div>
   )
 }
-
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"]
