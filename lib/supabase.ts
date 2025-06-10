@@ -66,8 +66,8 @@ export const createServerSupabaseClient = () => {
 export interface Product {
   id?: string
   name: string
-  qrcode?: string // Aangepast naar lowercase om overeen te komen met de database
-  created_at?: string
+  qrcode: string
+  categoryId?: string  // ← Deze regel toevoegen
 }
 
 export interface RegistrationEntry {
@@ -427,4 +427,45 @@ export function subscribeToRegistrations(callback: (registrations: RegistrationE
       if (data) callback(data)
     })
     .subscribe()
+}
+// ===== CATEGORIEËN FUNCTIONALITEIT =====
+export interface Category {
+  id: string
+  name: string
+}
+
+// Mock categorieën data
+const mockCategories: Category[] = [
+  { id: "1", name: "Smeermiddelen" },
+  { id: "2", name: "Reinigers" },
+  { id: "3", name: "Onderhoud" },
+]
+
+// Categorieën functies
+export async function fetchCategories() {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return { data: mockCategories, error: null }
+  }
+  const { data, error } = await supabase.from("categories").select("*").order("name")
+  return { data: data || [], error }
+}
+
+export async function saveCategory(category: Category) {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    const newCategory = { ...category, id: Date.now().toString() }
+    mockCategories.push(newCategory)
+    return { data: newCategory, error: null }
+  }
+  const { data, error } = await supabase.from("categories").insert([category]).select().single()
+  return { data, error }
+}
+
+export async function deleteCategory(id: string) {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    const index = mockCategories.findIndex((c) => c.id === id)
+    if (index > -1) mockCategories.splice(index, 1)
+    return { error: null }
+  }
+  const { error } = await supabase.from("categories").delete().eq("id", id)
+  return { error }
 }
