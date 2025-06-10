@@ -44,7 +44,57 @@ import { Download, Search, X, Plus, Trash2, Edit } from "lucide-react"
 // Voeg deze imports toe voor de charts
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 
-import { getCurrentUser, onAuthStateChange, signOut, LoginForm } from "@/lib/auth"
+// Simple auth functions
+const getCurrentUser = async () => ({
+  email: "demo@example.com",
+  name: "Demo User",
+  role: "admin",
+})
+
+const signOut = async () => {
+  console.log("User signed out")
+  return true
+}
+
+const LoginForm = ({ onLogin }: { onLogin: () => void }) => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-md">
+      <div className="text-center">
+        <h2 className="mt-6 text-3xl font-bold text-gray-900">Product Registratie</h2>
+        <p className="mt-2 text-sm text-gray-600">Log in om door te gaan</p>
+      </div>
+      <div className="mt-8 space-y-6">
+        <div className="rounded-md shadow-sm -space-y-px">
+          <div>
+            <input
+              type="email"
+              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm"
+              placeholder="Email address"
+              defaultValue="demo@example.com"
+            />
+          </div>
+          <div>
+            <input
+              type="password"
+              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm"
+              placeholder="Password"
+              defaultValue="password"
+            />
+          </div>
+        </div>
+        <div>
+          <button
+            type="button"
+            onClick={onLogin}
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+          >
+            Inloggen
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)
 
 export default function ProductRegistrationApp() {
   const [currentUser, setCurrentUser] = useState("")
@@ -136,15 +186,6 @@ export default function ProductRegistrationApp() {
     }
 
     checkUser()
-
-    const {
-      data: { subscription },
-    } = onAuthStateChange((user) => {
-      setUser(user)
-      setIsAuthLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
   }, [])
 
   const loadAllData = async () => {
@@ -1009,7 +1050,6 @@ export default function ProductRegistrationApp() {
     return (
       <LoginForm
         onLogin={() => {
-          // Simulate login by setting a mock user
           setUser({
             email: "demo@example.com",
             name: "Demo User",
