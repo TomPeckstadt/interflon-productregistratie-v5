@@ -632,34 +632,40 @@ export default function ProductRegistrationApp() {
   }
 
   const updateProduct = async () => {
+    console.log("updateProduct functie wordt aangeroepen!")
+
     if (editingProduct && editingProduct.id) {
       try {
-        console.log("updateProduct aangeroepen voor:", editingProduct)
+        console.log("Bezig met bijwerken van product:", editingProduct)
 
-        // Probeer eerst de database bij te werken
+        // Update lokaal eerst voor directe feedback
+        setProducts((prevProducts) => prevProducts.map((p) => (p.id === editingProduct.id ? editingProduct : p)))
+
+        // Toon direct een bericht dat het product is bijgewerkt
+        setImportMessage("✅ Product bijgewerkt!")
+        setShowEditDialog(false)
+        setEditingProduct(null)
+
+        // Probeer daarna de database bij te werken
         const result = await updateProductInDB(editingProduct.id, {
           name: editingProduct.name,
           qrcode: editingProduct.qrcode,
           categoryId: editingProduct.categoryId === "none" ? undefined : editingProduct.categoryId,
         })
 
-        // Update lokaal ongeacht of de database update werkt
-        setProducts((prevProducts) => prevProducts.map((p) => (p.id === editingProduct.id ? editingProduct : p)))
-
         if (result.error && result.error.code !== "TABLE_NOT_FOUND") {
           console.error("Fout bij bijwerken product in database:", result.error)
           setImportMessage("⚠️ Product lokaal bijgewerkt (database niet beschikbaar)")
-        } else {
-          setImportMessage("✅ Product bijgewerkt!")
         }
 
-        setEditingProduct(null)
-        setShowEditDialog(false)
         setTimeout(() => setImportMessage(""), 2000)
       } catch (error) {
         console.error("Fout bij bijwerken product:", error)
         setImportError("Fout bij bijwerken product")
+        setTimeout(() => setImportError(""), 2000)
       }
+    } else {
+      console.error("Geen geldig product om bij te werken")
     }
   }
 
@@ -2198,7 +2204,14 @@ export default function ProductRegistrationApp() {
                     <Button variant="ghost" onClick={() => setShowEditDialog(false)}>
                       Annuleren
                     </Button>
-                    <Button onClick={updateProduct} className="bg-amber-600 hover:bg-amber-700">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        console.log("Opslaan knop geklikt!")
+                        updateProduct()
+                      }}
+                      className="bg-amber-600 hover:bg-amber-700"
+                    >
                       Opslaan
                     </Button>
                   </div>
