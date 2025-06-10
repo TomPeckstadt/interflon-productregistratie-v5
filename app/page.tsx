@@ -789,7 +789,52 @@ fetchRegistrations(),
       setImportError("Fout bij verwijderen doel")
     }
   }
+const addNewCategory = async () => {
+  if (newCategoryName.trim() && !categories.find(c => c.name === newCategoryName.trim())) {
+    try {
+      console.log("addNewCategory aangeroepen voor:", newCategoryName.trim())
+      const result = await saveCategory({ id: "", name: newCategoryName.trim() })
 
+      if (result.error) {
+        console.error("Fout bij toevoegen categorie:", result.error)
+        setImportError(`Fout bij toevoegen categorie: ${result.error.message || "Onbekende fout"}`)
+      } else {
+        if (result.data) {
+          console.log("Categorie direct toevoegen aan lijst:", result.data)
+          setCategories((prevCategories) => [...prevCategories, result.data])
+        }
+
+        setNewCategoryName("")
+        setImportMessage("✅ Categorie toegevoegd!")
+        setTimeout(() => setImportMessage(""), 2000)
+      }
+    } catch (error) {
+      console.error("Onverwachte fout bij toevoegen categorie:", error)
+      setImportError("Fout bij toevoegen categorie")
+    }
+  }
+}
+
+const removeCategory = async (categoryId: string) => {
+  try {
+    console.log("removeCategory aangeroepen voor:", categoryId)
+    const result = await deleteCategory(categoryId)
+
+    if (result.error) {
+      console.error("Fout bij verwijderen categorie:", result.error)
+      setImportError(`Fout bij verwijderen categorie: ${result.error.message || "Onbekende fout"}`)
+    } else {
+      console.log("Categorie direct verwijderen uit lijst:", categoryId)
+      setCategories((prevCategories) => prevCategories.filter((c) => c.id !== categoryId))
+
+      setImportMessage("✅ Categorie verwijderd!")
+      setTimeout(() => setImportMessage(""), 2000)
+    }
+  } catch (error) {
+    console.error("Fout bij verwijderen categorie:", error)
+    setImportError("Fout bij verwijderen categorie")
+  }
+}
   const getFilteredAndSortedEntries = () => {
     const filtered = entries.filter((entry) => {
       const searchMatch =
