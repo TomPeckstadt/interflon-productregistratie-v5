@@ -441,13 +441,23 @@ const mockCategories: Category[] = [
   { id: "3", name: "Onderhoud" },
 ]
 
-// Categorieën functies
+// ===== CATEGORIEËN FUNCTIONALITEIT =====
 export async function fetchCategories() {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return { data: mockCategories, error: null }
-  }
+  const supabase = getSupabaseClient()
   const { data, error } = await supabase.from("categories").select("*").order("name")
   return { data: data || [], error }
+}
+
+export async function saveCategory(category: Omit<Category, "id">) {
+  const supabase = getSupabaseClient()
+  const { data, error } = await supabase.from("categories").insert([category]).select().single()
+  return { data, error }
+}
+
+export async function deleteCategory(id: string) {
+  const supabase = getSupabaseClient()
+  const { error } = await supabase.from("categories").delete().eq("id", id)
+  return { error }
 }
 
 export async function saveCategory(category: Category) {
