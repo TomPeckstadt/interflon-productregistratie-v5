@@ -622,12 +622,17 @@ fetchRegistrations(),
     if (newProductName.trim()) {
       try {
         const qrcode = newProductQrCode.trim() || ""
+        const categoryId = newProductCategory === "none" ? undefined : newProductCategory
         const existingProduct = products.find(
           (p) => p.name === newProductName.trim() || (qrcode && p.qrcode === qrcode),
         )
         if (!existingProduct) {
           console.log("addNewProduct aangeroepen voor:", newProductName.trim())
-          const result = await saveProduct({ name: newProductName.trim(), qrcode })
+    const result = await saveProduct({ 
+  name: newProductName.trim(), 
+  qrcode,
+  categoryId
+})
 
           if (result.error) {
             console.error("Fout bij toevoegen product:", result.error)
@@ -640,6 +645,7 @@ fetchRegistrations(),
 
             setNewProductName("")
             setNewProductQrCode("")
+            setNewProductCategory("none")
             setImportMessage("✅ Product toegevoegd!")
             setTimeout(() => setImportMessage(""), 2000)
           }
@@ -1334,6 +1340,7 @@ const removeCategory = async (categoryId: string) => {
                           <TableHead>Gebruiker</TableHead>
                           <TableHead>Product</TableHead>
                           <TableHead className="hidden md:table-cell">QR Code</TableHead>
+                          <TableHead className="hidden md:table-cell">Categorie</TableHead>
                           <TableHead>Locatie</TableHead>
                           <TableHead className="hidden md:table-cell">Doel</TableHead>
                         </TableRow>
@@ -1612,6 +1619,15 @@ const removeCategory = async (categoryId: string) => {
                                   "-"
                                 )}
                               </TableCell>
+                              <TableCell className="hidden md:table-cell">
+  {product.categoryId ? (
+    <Badge variant="outline" className="bg-amber-50 text-amber-800">
+      {categories.find(c => c.id === product.categoryId)?.name || "-"}
+    </Badge>
+  ) : (
+    "-"
+  )}
+</TableCell>
                               <TableCell className="text-right">
                                 <Button
                                   onClick={() => removeProduct(product)}
