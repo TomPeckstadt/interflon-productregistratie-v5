@@ -1408,7 +1408,7 @@ export default function ProductRegistrationApp() {
                                   if (product?.categoryId) {
                                     const category = categories.find((c) => c.id === product.categoryId)
                                     return category ? (
-                                      <Badge variant="outline" className="bg-amber-50 text-amber-800">
+                                      <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
                                         {category.name}
                                       </Badge>
                                     ) : (
@@ -1641,28 +1641,28 @@ export default function ProductRegistrationApp() {
                               </Badge>
                             )}
                             {product.categoryId && (
-                              <Badge variant="secondary" className="ml-2">
+                              <Badge variant="outline" className="ml-2 bg-amber-50 text-amber-800 border-amber-200">
                                 {categories.find((c) => c.id === product.categoryId)?.name || "Onbekend"}
                               </Badge>
                             )}
                           </div>
                           <div className="flex gap-2">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => {
                                 setEditingProduct(product)
                                 setShowEditDialog(true)
                               }}
-                              className="text-blue-600 hover:bg-blue-50"
+                              className="bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
                             >
                               <Edit className="mr-2 h-4 w-4" /> Bewerken
                             </Button>
                             <Button
-                              variant="destructive"
+                              variant="outline"
                               size="sm"
                               onClick={() => removeProduct(product)}
-                              className="text-red-600 border-red-200 hover:bg-red-50"
+                              className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
                             >
                               <Trash2 className="mr-2 h-4 w-4" /> Verwijderen
                             </Button>
