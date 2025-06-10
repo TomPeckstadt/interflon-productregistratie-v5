@@ -22,6 +22,10 @@ import {
   subscribeToLocations,
   subscribeToPurposes,
   subscribeToRegistrations,
+  fetchCategories,
+saveCategory,
+deleteCategory,
+type Category,
   type Product,
   type RegistrationEntry,
 } from "@/lib/supabase"
