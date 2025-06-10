@@ -44,59 +44,12 @@ import { Download, Search, X, Plus, Trash2, Edit } from "lucide-react"
 // Voeg deze imports toe voor de charts
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 
-// Simple auth functions
-const getCurrentUser = async () => ({
-  email: "demo@example.com",
-  name: "Demo User",
-  role: "admin",
-})
-
-const signOut = async () => {
-  console.log("User signed out")
-  return true
-}
-
-const LoginForm = ({ onLogin }: { onLogin: () => void }) => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-    <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-md">
-      <div className="text-center">
-        <h2 className="mt-6 text-3xl font-bold text-gray-900">Product Registratie</h2>
-        <p className="mt-2 text-sm text-gray-600">Log in om door te gaan</p>
-      </div>
-      <div className="mt-8 space-y-6">
-        <div className="rounded-md shadow-sm -space-y-px">
-          <div>
-            <input
-              type="email"
-              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm"
-              placeholder="Email address"
-              defaultValue="demo@example.com"
-            />
-          </div>
-          <div>
-            <input
-              type="password"
-              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm"
-              placeholder="Password"
-              defaultValue="password"
-            />
-          </div>
-        </div>
-        <div>
-          <button
-            type="button"
-            onClick={onLogin}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
-          >
-            Inloggen
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)
+// Import the real auth functions
+import { useAuth, LoginForm, signOut, type User } from "@/lib/auth"
 
 export default function ProductRegistrationApp() {
+  const { user, loading } = useAuth()
+
   const [currentUser, setCurrentUser] = useState("")
   const [selectedProduct, setSelectedProduct] = useState("")
   const [location, setLocation] = useState("")
@@ -104,9 +57,6 @@ export default function ProductRegistrationApp() {
   const [entries, setEntries] = useState<RegistrationEntry[]>([])
   const [showSuccess, setShowSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-
-  const [user, setUser] = useState<any>(null)
-  const [isAuthLoading, setIsAuthLoading] = useState(true)
 
   // Beheer states
   const [users, setUsers] = useState<string[]>([])
@@ -161,9 +111,11 @@ export default function ProductRegistrationApp() {
 
   // Laad alle data bij start
   useEffect(() => {
-    loadAllData()
-    setupRealtimeSubscriptions()
-  }, [])
+    if (user) {
+      loadAllData()
+      setupRealtimeSubscriptions()
+    }
+  }, [user])
 
   // Cleanup camera stream when component unmounts
   useEffect(() => {
@@ -176,17 +128,6 @@ export default function ProductRegistrationApp() {
       }
     }
   }, [cameraStream])
-
-  // Authentication check
-  useEffect(() => {
-    const checkUser = async () => {
-      const currentUser = await getCurrentUser()
-      setUser(currentUser)
-      setIsAuthLoading(false)
-    }
-
-    checkUser()
-  }, [])
 
   const loadAllData = async () => {
     try {
@@ -585,6 +526,7 @@ export default function ProductRegistrationApp() {
           `"${entry.product}"`,
           `"${entry.qrcode || ""}"`,
           `"${entry.location}"`,
+          `"${entry.purpose}"`,
           `"${entry.purpose}"`,
         ].join(","),
       ),
@@ -1028,13 +970,12 @@ export default function ProductRegistrationApp() {
 
   const handleLogout = async () => {
     await signOut()
-    setUser(null)
   }
 
   const stats = calculateStatistics()
 
   // Show loading while checking authentication
-  if (isAuthLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -1047,17 +988,7 @@ export default function ProductRegistrationApp() {
 
   // Show login form if not authenticated
   if (!user) {
-    return (
-      <LoginForm
-        onLogin={() => {
-          setUser({
-            email: "demo@example.com",
-            name: "Demo User",
-            role: "admin",
-          })
-        }}
-      />
-    )
+    return <LoginForm onLogin={(user: User) => {}} />
   }
 
   // Show main app if authenticated
@@ -1104,7 +1035,9 @@ export default function ProductRegistrationApp() {
               </div>
               <div className="hidden md:block">{entries.length} registraties</div>
               <div className="flex items-center gap-2">
-                <span>Ingelogd als: {user.email}</span>
+                <span>
+                  Ingelogd als: {user.name} ({user.email})
+                </span>
                 <Button
                   onClick={handleLogout}
                   variant="outline"
@@ -1119,7 +1052,7 @@ export default function ProductRegistrationApp() {
         </div>
       </header>
 
-      {/* Rest of your existing app content */}
+      {/* Rest of your existing app content - keeping the same structure */}
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
         {showSuccess && (
           <Alert className="mb-6 border-green-200 bg-green-50">
@@ -1139,6 +1072,7 @@ export default function ProductRegistrationApp() {
           </Alert>
         )}
 
+        {/* Rest of the tabs and content remain the same... */}
         <Tabs defaultValue="register" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 bg-white border border-gray-200 shadow-sm">
             <TabsTrigger
@@ -1285,6 +1219,7 @@ export default function ProductRegistrationApp() {
             </Card>
           </TabsContent>
 
+          {/* Add all other TabsContent sections here - keeping them the same as before */}
           <TabsContent value="history">
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
