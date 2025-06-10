@@ -1715,21 +1715,21 @@ export default function ProductRegistrationApp() {
                           <span>{category.name}</span>
                           <div className="flex gap-2">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => {
                                 setEditingCategory(category)
                                 setShowEditCategoryDialog(true)
                               }}
-                              className="text-blue-600 hover:bg-blue-50"
+                              className="bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
                             >
                               <Edit className="mr-2 h-4 w-4" /> Bewerken
                             </Button>
                             <Button
-                              variant="destructive"
+                              variant="outline"
                               size="sm"
                               onClick={() => removeCategory(category.id)}
-                              className="text-red-600 border-red-200 hover:bg-red-50"
+                              className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
                             >
                               <Trash2 className="mr-2 h-4 w-4" /> Verwijderen
                             </Button>
