@@ -1,7 +1,7 @@
 "use client"
 
-import type React from "react"
 import { useState, useEffect, useRef } from "react"
+import type React from "react"
 import {
   fetchProducts,
   saveProduct,
@@ -23,9 +23,9 @@ import {
   subscribeToPurposes,
   subscribeToRegistrations,
   fetchCategories,
-saveCategory,
-deleteCategory,
-type Category,
+  saveCategory,
+  deleteCategory,
+  type Category,
   type Product,
   type RegistrationEntry,
 } from "@/lib/supabase"
@@ -38,21 +38,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import {
-  Download,
-  Search,
-  X,
-  QrCode,
-  FileText,
-  Plus,
-  Trash2,
-  Users,
-  Package,
-  BarChart3,
-  TrendingUp,
-  Clock,
-  MapPin,
-} from "lucide-react"
+import { Download, Search, X, Plus, Trash2, Users, Package, BarChart3 } from "lucide-react"
 
 // Voeg deze imports toe voor de charts
 import {
@@ -67,10 +53,10 @@ import {
   Pie,
   LineChart,
   Line,
+  Cell,
 } from "recharts"
 
-import { getCurrentUser, onAuthStateChange, signOut } from "@/lib/auth"
-import { LoginForm } from "@/components/login-form"
+import { getCurrentUser, onAuthStateChange, signOut, LoginForm } from "@/lib/auth"
 
 export default function ProductRegistrationApp() {
   const [currentUser, setCurrentUser] = useState("")
@@ -171,21 +157,15 @@ export default function ProductRegistrationApp() {
     try {
       setConnectionStatus("connecting")
 
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        console.error("Supabase omgevingsvariabelen ontbreken")
-        setConnectionStatus("error")
-        setImportError("❌ Fout bij verbinden met database: Configuratie ontbreekt")
-        return
-      }
-
-      const [usersResult, productsResult, categoriesResult, locationsResult, purposesResult, registrationsResult] = await Promise.all([
-        fetchUsers(),
-fetchProducts(),
-fetchCategories(),  // <- Voeg deze toe
-fetchLocations(),
-fetchPurposes(),
-fetchRegistrations(),
-      ])
+      const [usersResult, productsResult, categoriesResult, locationsResult, purposesResult, registrationsResult] =
+        await Promise.all([
+          fetchUsers(),
+          fetchProducts(),
+          fetchCategories(),
+          fetchLocations(),
+          fetchPurposes(),
+          fetchRegistrations(),
+        ])
 
       if (usersResult.data) {
         setUsers(usersResult.data)
@@ -628,11 +608,11 @@ fetchRegistrations(),
         )
         if (!existingProduct) {
           console.log("addNewProduct aangeroepen voor:", newProductName.trim())
-    const result = await saveProduct({ 
-  name: newProductName.trim(), 
-  qrcode,
-  categoryId
-})
+          const result = await saveProduct({
+            name: newProductName.trim(),
+            qrcode,
+            categoryId,
+          })
 
           if (result.error) {
             console.error("Fout bij toevoegen product:", result.error)
@@ -796,52 +776,54 @@ fetchRegistrations(),
       setImportError("Fout bij verwijderen doel")
     }
   }
-const addNewCategory = async () => {
-  if (newCategoryName.trim() && !categories.find(c => c.name === newCategoryName.trim())) {
+
+  const addNewCategory = async () => {
+    if (newCategoryName.trim() && !categories.find((c) => c.name === newCategoryName.trim())) {
+      try {
+        console.log("addNewCategory aangeroepen voor:", newCategoryName.trim())
+        const result = await saveCategory({ name: newCategoryName.trim() })
+
+        if (result.error) {
+          console.error("Fout bij toevoegen categorie:", result.error)
+          setImportError(`Fout bij toevoegen categorie: ${result.error.message || "Onbekende fout"}`)
+        } else {
+          if (result.data) {
+            console.log("Categorie direct toevoegen aan lijst:", result.data)
+            setCategories((prevCategories) => [...prevCategories, result.data])
+          }
+
+          setNewCategoryName("")
+          setImportMessage("✅ Categorie toegevoegd!")
+          setTimeout(() => setImportMessage(""), 2000)
+        }
+      } catch (error) {
+        console.error("Onverwachte fout bij toevoegen categorie:", error)
+        setImportError("Fout bij toevoegen categorie")
+      }
+    }
+  }
+
+  const removeCategory = async (categoryId: string) => {
     try {
-      console.log("addNewCategory aangeroepen voor:", newCategoryName.trim())
-      const result = await saveCategory({ id: "", name: newCategoryName.trim() })
+      console.log("removeCategory aangeroepen voor:", categoryId)
+      const result = await deleteCategory(categoryId)
 
       if (result.error) {
-        console.error("Fout bij toevoegen categorie:", result.error)
-        setImportError(`Fout bij toevoegen categorie: ${result.error.message || "Onbekende fout"}`)
+        console.error("Fout bij verwijderen categorie:", result.error)
+        setImportError(`Fout bij verwijderen categorie: ${result.error.message || "Onbekende fout"}`)
       } else {
-        if (result.data) {
-          console.log("Categorie direct toevoegen aan lijst:", result.data)
-          setCategories((prevCategories) => [...prevCategories, result.data])
-        }
+        console.log("Categorie direct verwijderen uit lijst:", categoryId)
+        setCategories((prevCategories) => prevCategories.filter((c) => c.id !== categoryId))
 
-        setNewCategoryName("")
-        setImportMessage("✅ Categorie toegevoegd!")
+        setImportMessage("✅ Categorie verwijderd!")
         setTimeout(() => setImportMessage(""), 2000)
       }
     } catch (error) {
-      console.error("Onverwachte fout bij toevoegen categorie:", error)
-      setImportError("Fout bij toevoegen categorie")
+      console.error("Fout bij verwijderen categorie:", error)
+      setImportError("Fout bij verwijderen categorie")
     }
   }
-}
 
-const removeCategory = async (categoryId: string) => {
-  try {
-    console.log("removeCategory aangeroepen voor:", categoryId)
-    const result = await deleteCategory(categoryId)
-
-    if (result.error) {
-      console.error("Fout bij verwijderen categorie:", result.error)
-      setImportError(`Fout bij verwijderen categorie: ${result.error.message || "Onbekende fout"}`)
-    } else {
-      console.log("Categorie direct verwijderen uit lijst:", categoryId)
-      setCategories((prevCategories) => prevCategories.filter((c) => c.id !== categoryId))
-
-      setImportMessage("✅ Categorie verwijderd!")
-      setTimeout(() => setImportMessage(""), 2000)
-    }
-  } catch (error) {
-    console.error("Fout bij verwijderen categorie:", error)
-    setImportError("Fout bij verwijderen categorie")
-  }
-}
   const getFilteredAndSortedEntries = () => {
     const filtered = entries.filter((entry) => {
       const searchMatch =
@@ -1074,16 +1056,15 @@ const removeCategory = async (categoryId: string) => {
               Producten ({products.length})
             </TabsTrigger>
             <TabsTrigger
+              value="categories"
+              className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
+            >
+              Categorieën ({categories.length})
+            </TabsTrigger>
+            <TabsTrigger
               value="locations"
               className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
             >
-              <TabsTrigger
-  value="categories"
-  className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
->
-  Categorieën ({categories.length})
-</TabsTrigger>
-              >
               Locaties ({locations.length})
             </TabsTrigger>
             <TabsTrigger
@@ -1348,7 +1329,7 @@ const removeCategory = async (categoryId: string) => {
                       <TableBody>
                         {getFilteredAndSortedEntries().length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                            <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                               Geen registraties gevonden met de huidige filters
                             </TableCell>
                           </TableRow>
@@ -1368,6 +1349,22 @@ const removeCategory = async (categoryId: string) => {
                                   "-"
                                 )}
                               </TableCell>
+                              <TableCell className="hidden md:table-cell">
+                                {(() => {
+                                  const product = products.find((p) => p.name === entry.product)
+                                  if (product?.categoryId) {
+                                    const category = categories.find((c) => c.id === product.categoryId)
+                                    return category ? (
+                                      <Badge variant="outline" className="bg-amber-50 text-amber-800">
+                                        {category.name}
+                                      </Badge>
+                                    ) : (
+                                      "-"
+                                    )
+                                  }
+                                  return "-"
+                                })()}
+                              </TableCell>
                               <TableCell>{entry.location}</TableCell>
                               <TableCell className="hidden md:table-cell">{entry.purpose}</TableCell>
                             </TableRow>
@@ -1384,97 +1381,82 @@ const removeCategory = async (categoryId: string) => {
           <TabsContent value="users">
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <Users className="h-5 w-5" /> Gebruikers Beheren
-                </CardTitle>
-                <CardDescription>Voeg nieuwe gebruikers toe of verwijder bestaande gebruikers</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-xl">👥 Gebruikers Beheren</CardTitle>
+                <CardDescription>Voeg nieuwe gebruikers toe of verwijder bestaande</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="space-y-6">
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-lg font-medium mb-4">Nieuwe gebruiker toevoegen</h3>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <Label htmlFor="newUserName" className="sr-only">
-                          Naam
-                        </Label>
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <Label htmlFor="newUserName" className="text-sm font-medium block">
+                        Nieuwe gebruiker
+                      </Label>
+                      <div className="flex gap-2">
                         <Input
+                          type="text"
                           id="newUserName"
-                          placeholder="Voer naam in..."
+                          placeholder="Naam van de nieuwe gebruiker"
                           value={newUserName}
                           onChange={(e) => setNewUserName(e.target.value)}
                         />
+                        <Button type="button" onClick={addNewUser} className="bg-green-600 hover:bg-green-700">
+                          <Plus className="mr-1 h-4 w-4" /> Toevoegen
+                        </Button>
                       </div>
-                      <Button onClick={addNewUser} className="bg-amber-600 hover:bg-amber-700">
-                        <Plus className="mr-1 h-4 w-4" /> Toevoegen
-                      </Button>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-lg font-medium mb-4">Importeren / Exporteren</h3>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <Label htmlFor="userImport" className="block text-sm font-medium mb-1">
-                          Importeer gebruikers (CSV of TXT)
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="userImport"
-                            type="file"
-                            accept=".csv,.txt"
-                            ref={userFileInputRef}
-                            onChange={(e) => {
-                              if (e.target.files && e.target.files[0]) {
-                                handleFileImport(e.target.files[0], "users")
-                              }
-                            }}
-                          />
-                          <Button
-                            onClick={() => exportTemplate("users")}
-                            variant="outline"
-                            className="whitespace-nowrap"
-                          >
-                            <FileText className="mr-1 h-4 w-4" /> Template
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="userFile" className="text-sm font-medium">
+                      Importeer gebruikers (CSV)
+                    </Label>
+                    <Input
+                      type="file"
+                      id="userFile"
+                      accept=".csv, .txt"
+                      ref={userFileInputRef}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileImport(e.target.files[0], "users")
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <Label
+                      htmlFor="userFile"
+                      className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-2 text-sm"
+                    >
+                      Bestand kiezen
+                    </Label>
+                    <Button type="button" variant="outline" onClick={() => exportTemplate("users")} className="text-sm">
+                      <Download className="mr-1 h-4 w-4" /> Template
+                    </Button>
                   </div>
 
                   <div className="rounded-lg border overflow-hidden">
                     <Table>
                       <TableHeader className="bg-gray-50">
                         <TableRow>
-                          <TableHead>Naam</TableHead>
-                          <TableHead className="w-[100px] text-right">Acties</TableHead>
+                          <TableHead>Gebruiker</TableHead>
+                          <TableHead className="text-right">Acties</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {users.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={2} className="text-center py-8 text-gray-500">
-                              Geen gebruikers gevonden
+                        {users.map((user) => (
+                          <TableRow key={user}>
+                            <TableCell>{user}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => removeUser(user)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                <Trash2 className="mr-1 h-4 w-4" /> Verwijderen
+                              </Button>
                             </TableCell>
                           </TableRow>
-                        ) : (
-                          users.map((user) => (
-                            <TableRow key={user}>
-                              <TableCell className="font-medium">{user}</TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  onClick={() => removeUser(user)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span className="sr-only">Verwijder {user}</span>
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
+                        ))}
                       </TableBody>
                     </Table>
                   </div>
@@ -1486,162 +1468,158 @@ const removeCategory = async (categoryId: string) => {
           <TabsContent value="products">
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <Package className="h-5 w-5" /> Producten Beheren
-                </CardTitle>
-                <CardDescription>Voeg nieuwe producten toe of verwijder bestaande producten</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-xl">📦 Producten Beheren</CardTitle>
+                <CardDescription>Voeg nieuwe producten toe of verwijder bestaande</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="space-y-6">
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-lg font-medium mb-4">Nieuw product toevoegen</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="sm:col-span-2">
-                        <Label htmlFor="newProductName" className="block text-sm font-medium mb-1">
-                          Productnaam
-                        </Label>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="newProductName" className="text-sm font-medium block">
+                        Nieuw product
+                      </Label>
+                      <Input
+                        type="text"
+                        id="newProductName"
+                        placeholder="Naam van het nieuwe product"
+                        value={newProductName}
+                        onChange={(e) => setNewProductName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="newProductQrCode" className="text-sm font-medium block">
+                        QR Code
+                      </Label>
+                      <div className="flex gap-2">
                         <Input
-                          id="newProductName"
-                          placeholder="Voer productnaam in..."
-                          value={newProductName}
-                          onChange={(e) => setNewProductName(e.target.value)}
+                          type="text"
+                          id="newProductQrCode"
+                          placeholder="Optionele QR code"
+                          value={newProductQrCode}
+                          onChange={(e) => setNewProductQrCode(e.target.value)}
                         />
-                      </div>
-                      <div>
-                        <Label htmlFor="newProductQrCode" className="block text-sm font-medium mb-1">
-                          QR Code (optioneel)
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="newProductQrCode"
-                            placeholder="QR Code..."
-                            value={newProductQrCode}
-                            onChange={(e) => setNewProductQrCode(e.target.value)}
-                          />
-                          <Button
-                            type="button"
-                            onClick={() => {
-                              console.log("QR button clicked for product management")
-                              setQrScanMode("product-management")
-                              startQrScanner()
-                            }}
-                            variant="outline"
-                            className="px-2"
-                            disabled={showQrScanner}
-                          >
-                            <QrCode className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="sm:col-span-3">
-  <Label htmlFor="newProductCategory" className="block text-sm font-medium mb-1">
-    Categorie (optioneel)
-  </Label>
-  <Select value={newProductCategory} onValueChange={setNewProductCategory}>
-    <SelectTrigger id="newProductCategory">
-      <SelectValue placeholder="Selecteer een categorie" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="none">Geen categorie</SelectItem>
-      {categories.map((category) => (
-        <SelectItem key={category.id} value={category.id}>
-          {category.name}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
-                      <div className="sm:col-span-3">
-                        <Button onClick={addNewProduct} className="bg-amber-600 hover:bg-amber-700">
-                          <Plus className="mr-1 h-4 w-4" /> Product Toevoegen
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            setQrScanMode("product-management")
+                            startQrScanner()
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700"
+                          disabled={showQrScanner}
+                        >
+                          📱 Scan
                         </Button>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-lg font-medium mb-4">Importeren / Exporteren</h3>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <Label htmlFor="productImport" className="block text-sm font-medium mb-1">
-                          Importeer producten (CSV formaat: Naam,QRCode)
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="productImport"
-                            type="file"
-                            accept=".csv"
-                            ref={productFileInputRef}
-                            onChange={(e) => {
-                              if (e.target.files && e.target.files[0]) {
-                                handleFileImport(e.target.files[0], "products")
-                              }
-                            }}
-                          />
-                          <Button
-                            onClick={() => exportTemplate("products")}
-                            variant="outline"
-                            className="whitespace-nowrap"
-                          >
-                            <FileText className="mr-1 h-4 w-4" /> Template
-                          </Button>
-                        </div>
-                      </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="newProductCategory" className="text-sm font-medium block">
+                        Categorie
+                      </Label>
+                      <Select value={newProductCategory} onValueChange={setNewProductCategory}>
+                        <SelectTrigger id="newProductCategory">
+                          <SelectValue placeholder="Geen categorie" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Geen categorie</SelectItem>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
+                    <div>
+                      <Button type="button" onClick={addNewProduct} className="bg-green-600 hover:bg-green-700 mt-6">
+                        <Plus className="mr-1 h-4 w-4" /> Toevoegen
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="productFile" className="text-sm font-medium">
+                      Importeer producten (CSV)
+                    </Label>
+                    <Input
+                      type="file"
+                      id="productFile"
+                      accept=".csv"
+                      ref={productFileInputRef}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileImport(e.target.files[0], "products")
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <Label
+                      htmlFor="productFile"
+                      className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-2 text-sm"
+                    >
+                      Bestand kiezen
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => exportTemplate("products")}
+                      className="text-sm"
+                    >
+                      <Download className="mr-1 h-4 w-4" /> Template
+                    </Button>
                   </div>
 
                   <div className="rounded-lg border overflow-hidden">
                     <Table>
                       <TableHeader className="bg-gray-50">
                         <TableRow>
-                          <TableHead>Naam</TableHead>
+                          <TableHead>Product</TableHead>
                           <TableHead className="hidden md:table-cell">QR Code</TableHead>
-                          <TableHead className="w-[100px] text-right">Acties</TableHead>
+                          <TableHead className="hidden md:table-cell">Categorie</TableHead>
+                          <TableHead className="text-right">Acties</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {products.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={3} className="text-center py-8 text-gray-500">
-                              Geen producten gevonden
+                        {products.map((product) => (
+                          <TableRow key={product.id}>
+                            <TableCell>{product.name}</TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              {product.qrcode ? (
+                                <Badge variant="outline" className="font-mono text-xs">
+                                  {product.qrcode}
+                                </Badge>
+                              ) : (
+                                "-"
+                              )}
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              {product.categoryId
+                                ? (() => {
+                                    const category = categories.find((c) => c.id === product.categoryId)
+                                    return category ? (
+                                      <Badge variant="outline" className="bg-amber-50 text-amber-800">
+                                        {category.name}
+                                      </Badge>
+                                    ) : (
+                                      "-"
+                                    )
+                                  })()
+                                : "-"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => removeProduct(product)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                <Trash2 className="mr-1 h-4 w-4" /> Verwijderen
+                              </Button>
                             </TableCell>
                           </TableRow>
-                        ) : (
-                          products.map((product) => (
-                            <TableRow key={product.id}>
-                              <TableCell className="font-medium">{product.name}</TableCell>
-                              <TableCell className="hidden md:table-cell">
-                                {product.qrcode ? (
-                                  <Badge variant="outline" className="font-mono text-xs">
-                                    {product.qrcode}
-                                  </Badge>
-                                ) : (
-                                  "-"
-                                )}
-                              </TableCell>
-                              <TableCell className="hidden md:table-cell">
-  {product.categoryId ? (
-    <Badge variant="outline" className="bg-amber-50 text-amber-800">
-      {categories.find(c => c.id === product.categoryId)?.name || "-"}
-    </Badge>
-  ) : (
-    "-"
-  )}
-</TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  onClick={() => removeProduct(product)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span className="sr-only">Verwijder {product.name}</span>
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
+                        ))}
                       </TableBody>
                     </Table>
                   </div>
@@ -1651,131 +1629,29 @@ const removeCategory = async (categoryId: string) => {
           </TabsContent>
 
           <TabsContent value="categories">
-  <Card className="shadow-sm">
-    <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
-      <CardTitle className="flex items-center gap-2 text-xl">🏷️ Categorieën Beheren</CardTitle>
-      <CardDescription>Voeg nieuwe productcategorieën toe of verwijder bestaande categorieën</CardDescription>
-    </CardHeader>
-    <CardContent className="p-6">
-      <div className="space-y-6">
-        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-medium mb-4">Nieuwe categorie toevoegen</h3>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <Label htmlFor="newCategoryName" className="sr-only">
-                Categorie naam
-              </Label>
-              <Input
-                id="newCategoryName"
-                placeholder="Voer categorie naam in..."
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-              />
-            </div>
-            <Button onClick={addNewCategory} className="bg-amber-600 hover:bg-amber-700">
-              <Plus className="mr-1 h-4 w-4" /> Toevoegen
-            </Button>
-          </div>
-        </div>
-
-        <div className="rounded-lg border overflow-hidden">
-          <Table>
-            <TableHeader className="bg-gray-50">
-              <TableRow>
-                <TableHead>Naam</TableHead>
-                <TableHead className="w-[100px] text-right">Acties</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {categories.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={2} className="text-center py-8 text-gray-500">
-                    Geen categorieën gevonden
-                  </TableCell>
-                </TableRow>
-              ) : (
-                categories.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell className="font-medium">{category.name}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        onClick={() => removeCategory(category.id)}
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Verwijder {category.name}</span>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-</TabsContent>
-
-          <TabsContent value="locations">
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <MapPin className="h-5 w-5" /> Locaties Beheren
-                </CardTitle>
-                <CardDescription>Voeg nieuwe locaties toe of verwijder bestaande locaties</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-xl">🗂️ Categorieën Beheren</CardTitle>
+                <CardDescription>Voeg nieuwe categorieën toe of verwijder bestaande</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="space-y-6">
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-lg font-medium mb-4">Nieuwe locatie toevoegen</h3>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <Label htmlFor="newLocationName" className="sr-only">
-                          Locatie naam
-                        </Label>
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <Label htmlFor="newCategoryName" className="text-sm font-medium block">
+                        Nieuwe categorie
+                      </Label>
+                      <div className="flex gap-2">
                         <Input
-                          id="newLocationName"
-                          placeholder="Voer locatie naam in..."
-                          value={newLocationName}
-                          onChange={(e) => setNewLocationName(e.target.value)}
+                          type="text"
+                          id="newCategoryName"
+                          placeholder="Naam van de nieuwe categorie"
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
                         />
-                      </div>
-                      <Button onClick={addNewLocation} className="bg-amber-600 hover:bg-amber-700">
-                        <Plus className="mr-1 h-4 w-4" /> Toevoegen
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-lg font-medium mb-4">Importeren / Exporteren</h3>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <Label htmlFor="locationImport" className="block text-sm font-medium mb-1">
-                          Importeer locaties (CSV of TXT)
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="locationImport"
-                            type="file"
-                            accept=".csv,.txt"
-                            ref={locationFileInputRef}
-                            onChange={(e) => {
-                              if (e.target.files && e.target.files[0]) {
-                                handleFileImport(e.target.files[0], "locations")
-                              }
-                            }}
-                          />
-                          <Button
-                            onClick={() => exportTemplate("locations")}
-                            variant="outline"
-                            className="whitespace-nowrap"
-                          >
-                            <FileText className="mr-1 h-4 w-4" /> Template
-                          </Button>
-                        </div>
+                        <Button type="button" onClick={addNewCategory} className="bg-green-600 hover:bg-green-700">
+                          <Plus className="mr-1 h-4 w-4" /> Toevoegen
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1784,35 +1660,118 @@ const removeCategory = async (categoryId: string) => {
                     <Table>
                       <TableHeader className="bg-gray-50">
                         <TableRow>
-                          <TableHead>Naam</TableHead>
-                          <TableHead className="w-[100px] text-right">Acties</TableHead>
+                          <TableHead>Categorie</TableHead>
+                          <TableHead className="text-right">Acties</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {locations.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={2} className="text-center py-8 text-gray-500">
-                              Geen locaties gevonden
+                        {categories.map((category) => (
+                          <TableRow key={category.id}>
+                            <TableCell>{category.name}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => removeCategory(category.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                <Trash2 className="mr-1 h-4 w-4" /> Verwijderen
+                              </Button>
                             </TableCell>
                           </TableRow>
-                        ) : (
-                          locations.map((location) => (
-                            <TableRow key={location}>
-                              <TableCell className="font-medium">{location}</TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  onClick={() => removeLocation(location)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span className="sr-only">Verwijder {location}</span>
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="locations">
+            <Card className="shadow-sm">
+              <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
+                <CardTitle className="flex items-center gap-2 text-xl">📍 Locaties Beheren</CardTitle>
+                <CardDescription>Voeg nieuwe locaties toe of verwijder bestaande</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <Label htmlFor="newLocationName" className="text-sm font-medium block">
+                        Nieuwe locatie
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="text"
+                          id="newLocationName"
+                          placeholder="Naam van de nieuwe locatie"
+                          value={newLocationName}
+                          onChange={(e) => setNewLocationName(e.target.value)}
+                        />
+                        <Button type="button" onClick={addNewLocation} className="bg-green-600 hover:bg-green-700">
+                          <Plus className="mr-1 h-4 w-4" /> Toevoegen
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="locationFile" className="text-sm font-medium">
+                      Importeer locaties (CSV)
+                    </Label>
+                    <Input
+                      type="file"
+                      id="locationFile"
+                      accept=".csv, .txt"
+                      ref={locationFileInputRef}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileImport(e.target.files[0], "locations")
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <Label
+                      htmlFor="locationFile"
+                      className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-2 text-sm"
+                    >
+                      Bestand kiezen
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => exportTemplate("locations")}
+                      className="text-sm"
+                    >
+                      <Download className="mr-1 h-4 w-4" /> Template
+                    </Button>
+                  </div>
+
+                  <div className="rounded-lg border overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-gray-50">
+                        <TableRow>
+                          <TableHead>Locatie</TableHead>
+                          <TableHead className="text-right">Acties</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {locations.map((location) => (
+                          <TableRow key={location}>
+                            <TableCell>{location}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => removeLocation(location)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                <Trash2 className="mr-1 h-4 w-4" /> Verwijderen
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
                       </TableBody>
                     </Table>
                   </div>
@@ -1825,94 +1784,86 @@ const removeCategory = async (categoryId: string) => {
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
                 <CardTitle className="flex items-center gap-2 text-xl">🎯 Doelen Beheren</CardTitle>
-                <CardDescription>Voeg nieuwe doelen toe of verwijder bestaande doelen</CardDescription>
+                <CardDescription>Voeg nieuwe doelen toe of verwijder bestaande</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="space-y-6">
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-lg font-medium mb-4">Nieuw doel toevoegen</h3>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <Label htmlFor="newPurposeName" className="sr-only">
-                          Doel naam
-                        </Label>
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <Label htmlFor="newPurposeName" className="text-sm font-medium block">
+                        Nieuw doel
+                      </Label>
+                      <div className="flex gap-2">
                         <Input
+                          type="text"
                           id="newPurposeName"
-                          placeholder="Voer doel naam in..."
+                          placeholder="Naam van het nieuwe doel"
                           value={newPurposeName}
                           onChange={(e) => setNewPurposeName(e.target.value)}
                         />
+                        <Button type="button" onClick={addNewPurpose} className="bg-green-600 hover:bg-green-700">
+                          <Plus className="mr-1 h-4 w-4" /> Toevoegen
+                        </Button>
                       </div>
-                      <Button onClick={addNewPurpose} className="bg-amber-600 hover:bg-amber-700">
-                        <Plus className="mr-1 h-4 w-4" /> Toevoegen
-                      </Button>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-lg font-medium mb-4">Importeren / Exporteren</h3>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <Label htmlFor="purposeImport" className="block text-sm font-medium mb-1">
-                          Importeer doelen (CSV of TXT)
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="purposeImport"
-                            type="file"
-                            accept=".csv,.txt"
-                            ref={purposeFileInputRef}
-                            onChange={(e) => {
-                              if (e.target.files && e.target.files[0]) {
-                                handleFileImport(e.target.files[0], "purposes")
-                              }
-                            }}
-                          />
-                          <Button
-                            onClick={() => exportTemplate("purposes")}
-                            variant="outline"
-                            className="whitespace-nowrap"
-                          >
-                            <FileText className="mr-1 h-4 w-4" /> Template
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="purposeFile" className="text-sm font-medium">
+                      Importeer doelen (CSV)
+                    </Label>
+                    <Input
+                      type="file"
+                      id="purposeFile"
+                      accept=".csv, .txt"
+                      ref={purposeFileInputRef}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileImport(e.target.files[0], "purposes")
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <Label
+                      htmlFor="purposeFile"
+                      className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-2 text-sm"
+                    >
+                      Bestand kiezen
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => exportTemplate("purposes")}
+                      className="text-sm"
+                    >
+                      <Download className="mr-1 h-4 w-4" /> Template
+                    </Button>
                   </div>
 
                   <div className="rounded-lg border overflow-hidden">
                     <Table>
                       <TableHeader className="bg-gray-50">
                         <TableRow>
-                          <TableHead>Naam</TableHead>
-                          <TableHead className="w-[100px] text-right">Acties</TableHead>
+                          <TableHead>Doel</TableHead>
+                          <TableHead className="text-right">Acties</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {purposes.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={2} className="text-center py-8 text-gray-500">
-                              Geen doelen gevonden
+                        {purposes.map((purpose) => (
+                          <TableRow key={purpose}>
+                            <TableCell>{purpose}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => removePurpose(purpose)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                <Trash2 className="mr-1 h-4 w-4" /> Verwijderen
+                              </Button>
                             </TableCell>
                           </TableRow>
-                        ) : (
-                          purposes.map((purpose) => (
-                            <TableRow key={purpose}>
-                              <TableCell className="font-medium">{purpose}</TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  onClick={() => removePurpose(purpose)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span className="sr-only">Verwijder {purpose}</span>
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
+                        ))}
                       </TableBody>
                     </Table>
                   </div>
@@ -1924,353 +1875,281 @@ const removeCategory = async (categoryId: string) => {
           <TabsContent value="statistics">
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <BarChart3 className="h-5 w-5" /> Dashboard & Statistieken
-                </CardTitle>
-                <CardDescription>
-                  Overzicht van product registraties en gebruiksstatistieken met grafieken
-                </CardDescription>
+                <CardTitle className="flex items-center gap-2 text-xl">📊 Statistieken en Overzichten</CardTitle>
+                <CardDescription>Bekijk de statistieken van productregistraties</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="space-y-8">
-                  {/* Overzicht kaarten */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-blue-600">Totaal Registraties</p>
-                            <p className="text-2xl font-bold text-blue-900">{stats.totalRegistrations}</p>
-                          </div>
-                          <BarChart3 className="h-8 w-8 text-blue-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <Card className="shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-semibold">
+                        <Package className="mr-2 inline-block h-5 w-5" />
+                        Totaal Registraties
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-gray-800">{stats.totalRegistrations}</div>
+                      <p className="text-sm text-gray-500">Aantal geregistreerde producten</p>
+                    </CardContent>
+                  </Card>
 
-                    <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-green-600">Actieve Gebruikers</p>
-                            <p className="text-2xl font-bold text-green-900">{stats.uniqueUsers}</p>
-                          </div>
-                          <Users className="h-8 w-8 text-green-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                  <Card className="shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-semibold">
+                        <Users className="mr-2 inline-block h-5 w-5" />
+                        Unieke Gebruikers
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-gray-800">{stats.uniqueUsers}</div>
+                      <p className="text-sm text-gray-500">
+                        Aantal unieke gebruikers die producten hebben geregistreerd
+                      </p>
+                    </CardContent>
+                  </Card>
 
-                    <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-purple-600">Gebruikte Producten</p>
-                            <p className="text-2xl font-bold text-purple-900">{stats.uniqueProducts}</p>
-                          </div>
-                          <Package className="h-8 w-8 text-purple-600" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                  <Card className="shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-semibold">
+                        <BarChart3 className="mr-2 inline-block h-5 w-5" />
+                        Unieke Producten
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-gray-800">{stats.uniqueProducts}</div>
+                      <p className="text-sm text-gray-500">Aantal unieke producten die zijn geregistreerd</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <h2 className="text-xl font-semibold mb-4">Top Gebruikers (Registraties)</h2>
+                    {stats.topUsers.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Gebruiker</TableHead>
+                            <TableHead className="text-right">Aantal</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {stats.topUsers.map(([user, count]) => (
+                            <TableRow key={user}>
+                              <TableCell>{user}</TableCell>
+                              <TableCell className="text-right">{count}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <p className="text-gray-500">Geen data beschikbaar</p>
+                    )}
                   </div>
 
-                  {/* Grafieken sectie - kleiner gemaakt */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Top Gebruikers Chart */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <TrendingUp className="h-5 w-5" /> Top Gebruikers (Grafiek)
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {stats.topUsers.length > 0 ? (
-                          <div className="h-48">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={stats.topUsers.map(([name, count]) => ({ name, count }))}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} fontSize={12} />
-                                <YAxis fontSize={12} />
-                                <Tooltip />
-                                <Bar dataKey="count" fill="#f59e0b" />
-                              </BarChart>
-                            </ResponsiveContainer>
-                          </div>
-                        ) : (
-                          <p className="text-gray-500 text-center py-4">Geen data beschikbaar</p>
-                        )}
-                      </CardContent>
-                    </Card>
+                  <div>
+                    <h2 className="text-xl font-semibold mb-4">Top Producten (Registraties)</h2>
+                    {stats.topProducts.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Product</TableHead>
+                            <TableHead className="text-right">Aantal</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {stats.topProducts.map(([product, count]) => (
+                            <TableRow key={product}>
+                              <TableCell>{product}</TableCell>
+                              <TableCell className="text-right">{count}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <p className="text-gray-500">Geen data beschikbaar</p>
+                    )}
+                  </div>
+                </div>
 
-                    {/* Top Producten Chart */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Package className="h-5 w-5" /> Top Producten (Grafiek)
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {stats.topProducts.length > 0 ? (
-                          <div className="h-48">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <PieChart>
-                                <Pie
-                                  data={stats.topProducts.map(([name, count], index) => ({
-                                    name,
-                                    count,
-                                    fill: ["#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ef4444"][index % 5],
-                                  }))}
-                                  cx="50%"
-                                  cy="50%"
-                                  outerRadius={60}
-                                  dataKey="count"
-                                  label={({ name, percent }) =>
-                                    `${name.length > 15 ? name.substring(0, 15) + "..." : name} (${(percent * 100).toFixed(0)}%)`
-                                  }
-                                  fontSize={10}
-                                />
-                                <Tooltip />
-                              </PieChart>
-                            </ResponsiveContainer>
-                          </div>
-                        ) : (
-                          <p className="text-gray-500 text-center py-4">Geen data beschikbaar</p>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    {/* Activiteit per dag */}
-                    <Card className="lg:col-span-2">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Clock className="h-5 w-5" /> Activiteit per Dag (Laatste 7 dagen)
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {(() => {
-                          // Bereken activiteit per dag voor de laatste 7 dagen
-                          const last7Days = Array.from({ length: 7 }, (_, i) => {
-                            const date = new Date()
-                            date.setDate(date.getDate() - i)
-                            return date.toLocaleDateString("nl-NL")
-                          }).reverse()
-
-                          const activityPerDay = last7Days.map((date) => {
-                            const count = entries.filter((entry) => entry.date === date).length
-                            return { date, count }
-                          })
-
-                          return activityPerDay.some((day) => day.count > 0) ? (
-                            <div className="h-48">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={activityPerDay}>
-                                  <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis dataKey="date" fontSize={12} />
-                                  <YAxis fontSize={12} />
-                                  <Tooltip />
-                                  <Line type="monotone" dataKey="count" stroke="#f59e0b" strokeWidth={2} />
-                                </LineChart>
-                              </ResponsiveContainer>
-                            </div>
-                          ) : (
-                            <p className="text-gray-500 text-center py-8">Geen activiteit in de laatste 7 dagen</p>
-                          )
-                        })()}
-                      </CardContent>
-                    </Card>
+                <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <h2 className="text-xl font-semibold mb-4">Top Locaties (Registraties)</h2>
+                    {stats.topLocations.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Locatie</TableHead>
+                            <TableHead className="text-right">Aantal</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {stats.topLocations.map(([location, count]) => (
+                            <TableRow key={location}>
+                              <TableCell>{location}</TableCell>
+                              <TableCell className="text-right">{count}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <p className="text-gray-500">Geen data beschikbaar</p>
+                    )}
                   </div>
 
-                  {/* Alle lijsten in een grid */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <TrendingUp className="h-5 w-5" /> Top Gebruikers
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {stats.topUsers.length === 0 ? (
-                            <p className="text-gray-500 text-center py-4">Geen data beschikbaar</p>
-                          ) : (
-                            stats.topUsers.map(([user, count], index) => (
-                              <div key={user} className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center">
-                                    {index + 1}
-                                  </div>
-                                  <span className="font-medium">{user}</span>
-                                </div>
-                                <Badge variant="secondary">{count} registraties</Badge>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Package className="h-5 w-5" /> Top Producten
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {stats.topProducts.length === 0 ? (
-                            <p className="text-gray-500 text-center py-4">Geen data beschikbaar</p>
-                          ) : (
-                            stats.topProducts.map(([product, count], index) => (
-                              <div key={product} className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center">
-                                    {index + 1}
-                                  </div>
-                                  <span className="font-medium">{product}</span>
-                                </div>
-                                <Badge variant="secondary">{count} keer gebruikt</Badge>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <MapPin className="h-5 w-5" /> Top Locaties
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {stats.topLocations.length === 0 ? (
-                            <p className="text-gray-500 text-center py-4">Geen data beschikbaar</p>
-                          ) : (
-                            stats.topLocations.map(([location, count], index) => (
-                              <div key={location} className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center">
-                                    {index + 1}
-                                  </div>
-                                  <span className="font-medium">{location}</span>
-                                </div>
-                                <Badge variant="secondary">{count} registraties</Badge>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Clock className="h-5 w-5" /> Recente Activiteit
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {stats.recentActivity.length === 0 ? (
-                            <p className="text-gray-500 text-center py-4">Geen recente activiteit</p>
-                          ) : (
-                            stats.recentActivity.map((entry) => (
-                              <div key={entry.id} className="flex items-center justify-between text-sm">
-                                <div>
-                                  <span className="font-medium">{entry.user}</span>
-                                  <span className="text-gray-500"> gebruikte </span>
-                                  <span className="font-medium">{entry.product}</span>
-                                </div>
-                                <div className="text-right text-gray-500">
-                                  <div className="text-xs">{entry.date}</div>
-                                  <div className="font-medium">{entry.time}</div>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
+                  <div>
+                    <h2 className="text-xl font-semibold mb-4">Recente Activiteit</h2>
+                    {stats.recentActivity.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Datum</TableHead>
+                            <TableHead>Gebruiker</TableHead>
+                            <TableHead>Product</TableHead>
+                            <TableHead>Locatie</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {stats.recentActivity.map((entry) => (
+                            <TableRow key={entry.id}>
+                              <TableCell>{entry.date}</TableCell>
+                              <TableCell>{entry.user}</TableCell>
+                              <TableCell>{entry.product}</TableCell>
+                              <TableCell>{entry.location}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <p className="text-gray-500">Geen recente activiteit</p>
+                    )}
                   </div>
+                </div>
+
+                <div className="mt-8">
+                  <h2 className="text-xl font-semibold mb-4">Registraties per Maand</h2>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={generateMonthlyData(entries)}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="registrations" fill="#f97316" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="mt-8">
+                  <h2 className="text-xl font-semibold mb-4">Product Registratie Verdeling</h2>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <PieChart>
+                      <Pie
+                        data={generateProductData(products, entries)}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={160}
+                        fill="#8884d8"
+                        label
+                      >
+                        {generateProductData(products, entries).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="mt-8">
+                  <h2 className="text-xl font-semibold mb-4">Registraties per Dag</h2>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={generateDailyData(entries)}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="registrations" stroke="#82ca9d" />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-
-        {/* QR Scanner Modal */}
-        {showQrScanner && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">📱 QR Code Scanner</h3>
-                <Button onClick={stopQrScanner} variant="outline" size="sm">
-                  ✕ Sluiten
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                {isScanning ? (
-                  <>
-                    <video ref={videoRef} className="w-full h-64 bg-gray-200 rounded-lg" autoPlay playsInline />
-                    <canvas ref={canvasRef} className="hidden" />
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600 mb-4">Richt de camera op een QR code</p>
-                      <div className="flex items-center justify-center gap-2 mb-4">
-                        <div className="animate-pulse w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span className="text-sm text-blue-600">Scannen...</span>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-gray-600 mb-4">Camera niet beschikbaar</p>
-                  </div>
-                )}
-
-                <Button onClick={scanQrCode} className="w-full">
-                  🔍 Handmatig Invoeren
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Footer */}
-      <footer className="mt-12 border-t border-gray-200 bg-white py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center mb-4 md:mb-0">
-              <div className="flex items-center mr-6">
-                {/* CSS-gebaseerd Interflon logo */}
-                <div className="flex items-center mr-3">
-                  <div className="relative w-10 h-10 mr-2">
-                    {/* Hoofdcirkel */}
-                    <div className="w-10 h-10 border-4 border-red-500 rounded-full relative">
-                      {/* Kleine cirkel linksboven */}
-                      <div className="absolute -top-1 -left-1 w-3 h-3 bg-red-500 rounded-full"></div>
-                    </div>
-                    <div className="text-lg font-bold text-red-500 tracking-wide">INTERFLON</div>
-                  </div>
-                </div>
-              </div>
-              <p className="text-sm text-gray-600">
-                © {new Date().getFullYear()} INTERFLON. Alle rechten voorbehouden.
-              </p>
-            </div>
-            <div className="flex items-center gap-6">
-              <a href="#" className="text-sm text-gray-500 hover:text-red-600">
-                Privacy
-              </a>
-              <a href="#" className="text-sm text-gray-500 hover:text-red-600">
-                Voorwaarden
-              </a>
-              <a href="#" className="text-sm text-gray-500 hover:text-red-600">
-                Contact
-              </a>
+      {showQrScanner && (
+        <div className="fixed top-0 left-0 w-full h-full bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+            <h2 className="text-2xl font-semibold mb-4">QR Code Scanner</h2>
+            {isScanning ? (
+              <>
+                {navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? (
+                  <>
+                    <video ref={videoRef} className="w-full aspect-video" autoPlay muted playsInline></video>
+                    <canvas ref={canvasRef} className="hidden"></canvas>
+                  </>
+                ) : (
+                  <p className="text-red-500">Camera niet ondersteund</p>
+                )}
+              </>
+            ) : (
+              <p className="text-gray-600">Camera wordt geladen...</p>
+            )}
+
+            <div className="mt-4 flex justify-between">
+              <Button variant="secondary" onClick={scanQrCode}>
+                Handmatig invoeren
+              </Button>
+              <Button variant="destructive" onClick={stopQrScanner}>
+                Annuleren
+              </Button>
             </div>
           </div>
         </div>
-      </footer>
+      )}
     </div>
   )
+}
+
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#A8A495"]
+
+const generateMonthlyData = (entries: RegistrationEntry[]) => {
+  const monthlyData: { [key: string]: number } = {}
+
+  entries.forEach((entry) => {
+    const date = new Date(entry.timestamp)
+    const month = date.toLocaleString("default", { month: "long" })
+    monthlyData[month] = (monthlyData[month] || 0) + 1
+  })
+
+  return Object.entries(monthlyData).map(([month, registrations]) => ({ month, registrations }))
+}
+
+const generateProductData = (products: Product[], entries: RegistrationEntry[]) => {
+  const productData: { [key: string]: number } = {}
+
+  entries.forEach((entry) => {
+    productData[entry.product] = (productData[entry.product] || 0) + 1
+  })
+
+  return products
+    .map((product) => ({
+      name: product.name,
+      value: productData[product.name] || 0,
+    }))
+    .sort((a, b) => b.value - a.value)
+}
+
+const generateDailyData = (entries: RegistrationEntry[]) => {
+  const dailyData: { [key: string]: number } = {}
+
+  entries.forEach((entry) => {
+    const date = new Date(entry.timestamp).toLocaleDateString()
+    dailyData[date] = (dailyData[date] || 0) + 1
+  })
+
+  return Object.entries(dailyData).map(([date, registrations]) => ({ date, registrations }))
 }
