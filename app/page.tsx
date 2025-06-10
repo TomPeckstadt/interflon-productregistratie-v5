@@ -89,6 +89,7 @@ export default function ProductRegistrationApp() {
   const [products, setProducts] = useState<Product[]>([])
   const [locations, setLocations] = useState<string[]>([])
   const [purposes, setPurposes] = useState<string[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
 
   // Nieuwe item states
   const [newUserName, setNewUserName] = useState("")
@@ -96,6 +97,7 @@ export default function ProductRegistrationApp() {
   const [newProductQrCode, setNewProductQrCode] = useState("")
   const [newLocationName, setNewLocationName] = useState("")
   const [newPurposeName, setNewPurposeName] = useState("")
+  const [newCategoryName, setNewCategoryName] = useState("")
 
   // QR Scanner states
   const [showQrScanner, setShowQrScanner] = useState(false)
@@ -175,12 +177,13 @@ export default function ProductRegistrationApp() {
         return
       }
 
-      const [usersResult, productsResult, locationsResult, purposesResult, registrationsResult] = await Promise.all([
+      const [usersResult, productsResult, categoriesResult, locationsResult, purposesResult, registrationsResult] = await Promise.all([
         fetchUsers(),
-        fetchProducts(),
-        fetchLocations(),
-        fetchPurposes(),
-        fetchRegistrations(),
+fetchProducts(),
+fetchCategories(),  // <- Voeg deze toe
+fetchLocations(),
+fetchPurposes(),
+fetchRegistrations(),
       ])
 
       if (usersResult.data) {
@@ -193,6 +196,7 @@ export default function ProductRegistrationApp() {
       if (productsResult.data) setProducts(productsResult.data)
       if (locationsResult.data) setLocations(locationsResult.data)
       if (purposesResult.data) setPurposes(purposesResult.data)
+      if (categoriesResult.data) setCategories(categoriesResult.data)
       if (registrationsResult.data) setEntries(registrationsResult.data)
 
       setConnectionStatus("connected")
@@ -998,7 +1002,7 @@ export default function ProductRegistrationApp() {
         )}
 
         <Tabs defaultValue="register" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 bg-white border border-gray-200 shadow-sm">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 bg-white border border-gray-200 shadow-sm">
             <TabsTrigger
               value="register"
               className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
@@ -1021,6 +1025,13 @@ export default function ProductRegistrationApp() {
               value="locations"
               className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
             >
+              <TabsTrigger
+  value="categories"
+  className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
+>
+  Categorieën ({categories.length})
+</TabsTrigger>
+              >
               Locaties ({locations.length})
             </TabsTrigger>
             <TabsTrigger
@@ -1558,6 +1569,75 @@ export default function ProductRegistrationApp() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="categories">
+  <Card className="shadow-sm">
+    <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
+      <CardTitle className="flex items-center gap-2 text-xl">🏷️ Categorieën Beheren</CardTitle>
+      <CardDescription>Voeg nieuwe productcategorieën toe of verwijder bestaande categorieën</CardDescription>
+    </CardHeader>
+    <CardContent className="p-6">
+      <div className="space-y-6">
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+          <h3 className="text-lg font-medium mb-4">Nieuwe categorie toevoegen</h3>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <Label htmlFor="newCategoryName" className="sr-only">
+                Categorie naam
+              </Label>
+              <Input
+                id="newCategoryName"
+                placeholder="Voer categorie naam in..."
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+              />
+            </div>
+            <Button onClick={addNewCategory} className="bg-amber-600 hover:bg-amber-700">
+              <Plus className="mr-1 h-4 w-4" /> Toevoegen
+            </Button>
+          </div>
+        </div>
+
+        <div className="rounded-lg border overflow-hidden">
+          <Table>
+            <TableHeader className="bg-gray-50">
+              <TableRow>
+                <TableHead>Naam</TableHead>
+                <TableHead className="w-[100px] text-right">Acties</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {categories.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={2} className="text-center py-8 text-gray-500">
+                    Geen categorieën gevonden
+                  </TableCell>
+                </TableRow>
+              ) : (
+                categories.map((category) => (
+                  <TableRow key={category.id}>
+                    <TableCell className="font-medium">{category.name}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        onClick={() => removeCategory(category.id)}
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Verwijder {category.name}</span>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+</TabsContent>
 
           <TabsContent value="locations">
             <Card className="shadow-sm">
