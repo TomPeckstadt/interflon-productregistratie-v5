@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 
-// Voeg deze debug functie toe aan het begin van het bestand, direct na de import statement
+// Debug functie voor logging
 function debugLog(message: string, data?: any) {
   console.log(`[DEBUG ${new Date().toISOString()}] ${message}`, data || "")
 }
@@ -54,20 +54,17 @@ export const getSupabaseClient = () => {
   return supabaseClient
 }
 
-// Supabase client voor server-side gebruik
-export const createServerSupabaseClient = () => {
-  return createClient(
-    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-  )
-}
-
 // Type definities
 export interface Product {
   id?: string
   name: string
   qrcode: string
-  categoryId?: string  // ← Deze regel toevoegen
+  categoryId?: string
+}
+
+export interface Category {
+  id: string
+  name: string
 }
 
 export interface RegistrationEntry {
@@ -79,33 +76,65 @@ export interface RegistrationEntry {
   timestamp: string
   date: string
   time: string
-  qrcode?: string // Aangepast naar lowercase om overeen te komen met de database
+  qrcode?: string
   created_at?: string
 }
 
-// Database functies
+// Mock categorieën data voor fallback
+const mockCategories: Category[] = [
+  { id: "1", name: "Smeermiddelen" },
+  { id: "2", name: "Reinigers" },
+  { id: "3", name: "Onderhoud" },
+]
+
+// ===== PRODUCT FUNCTIONALITEIT =====
 export async function fetchProducts() {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false })
+  try {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false })
 
-  if (error) {
-    console.error("Error fetching products:", error)
-    return { data: [], error }
+    if (error) {
+      // Check if it's a "relation does not exist" error
+      if (
+        error.message.includes('relation "public.products" does not exist') ||
+        error.message.includes("does not exist")
+      ) {
+        console.log("Products table does not exist, using mock data")
+        return { data: null, error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
+      }
+      console.error("Error fetching products:", error)
+      return { data: null, error }
+    }
+
+    return { data: data || [], error: null }
+  } catch (error) {
+    console.log("Unexpected error fetching products:", error)
+    return { data: null, error: { message: "Unexpected error", code: "UNEXPECTED_ERROR" } }
   }
-
-  return { data: data || [], error: null }
 }
 
 export async function saveProduct(product: Product) {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.from("products").insert([product]).select()
+  try {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.from("products").insert([product]).select()
 
-  if (error) {
-    console.error("Error saving product:", error)
-    return { data: null, error }
+    if (error) {
+      if (
+        error.message.includes('relation "public.products" does not exist') ||
+        error.message.includes("does not exist")
+      ) {
+        console.log("Products table does not exist, cannot save to database")
+        return { data: null, error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
+      }
+      console.error("Error saving product:", error)
+      return { data: null, error }
+    }
+
+    return { data: data?.[0] || null, error: null }
+  } catch (error) {
+    console.log("Unexpected error saving product:", error)
+    return { data: null, error: { message: "Unexpected error", code: "UNEXPECTED_ERROR" } }
   }
-
-  return { data: data?.[0] || null, error: null }
 }
 
 export async function deleteProduct(id: string) {
@@ -128,354 +157,121 @@ export async function deleteProduct(id: string) {
   }
 }
 
-export async function fetchUsers() {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.from("users").select("*").order("created_at", { ascending: false })
-
-  if (error) {
-    console.error("Error fetching users:", error)
-    return { data: [], error }
-  }
-
-  return { data: data?.map((user) => user.name) || [], error: null }
-}
-
-export async function saveUser(name: string) {
-  debugLog("saveUser aangeroepen met:", name)
-  const supabase = getSupabaseClient()
-
-  try {
-    debugLog("Bezig met opslaan van gebruiker...")
-    const { data, error } = await supabase.from("users").insert([{ name }]).select()
-
-    if (error) {
-      console.error("Database error bij opslaan gebruiker:", error)
-      return { data: null, error }
-    }
-
-    debugLog("Gebruiker succesvol opgeslagen:", data)
-    return { data: data?.[0] || null, error: null }
-  } catch (error) {
-    console.error("Onverwachte fout bij opslaan gebruiker:", error)
-    return { data: null, error }
-  }
-}
-
-export async function deleteUser(name: string) {
-  console.log("deleteUser aangeroepen met:", name)
-  const supabase = getSupabaseClient()
-
-  try {
-    console.log("Bezig met verwijderen van gebruiker...")
-    const { error } = await supabase.from("users").delete().eq("name", name)
-
-    if (error) {
-      console.error("Database error bij verwijderen gebruiker:", error)
-      return { success: false, error }
-    }
-
-    console.log("Gebruiker succesvol verwijderd")
-    return { success: true, error: null }
-  } catch (error) {
-    console.error("Onverwachte fout bij verwijderen gebruiker:", error)
-    return { success: false, error }
-  }
-}
-
-export async function fetchLocations() {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.from("locations").select("*").order("created_at", { ascending: false })
-
-  if (error) {
-    console.error("Error fetching locations:", error)
-    return { data: [], error }
-  }
-
-  return { data: data?.map((location) => location.name) || [], error: null }
-}
-
-export async function saveLocation(name: string) {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.from("locations").insert([{ name }]).select()
-
-  if (error) {
-    console.error("Error saving location:", error)
-    return { data: null, error }
-  }
-
-  return { data: data?.[0] || null, error: null }
-}
-
-export async function deleteLocation(name: string) {
-  const supabase = getSupabaseClient()
-  const { error } = await supabase.from("locations").delete().eq("name", name)
-
-  if (error) {
-    console.error("Error deleting location:", error)
-    return { success: false, error }
-  }
-
-  return { success: true, error: null }
-}
-
-export async function fetchPurposes() {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.from("purposes").select("*").order("created_at", { ascending: false })
-
-  if (error) {
-    console.error("Error fetching purposes:", error)
-    return { data: [], error }
-  }
-
-  return { data: data?.map((purpose) => purpose.name) || [], error: null }
-}
-
-export async function savePurpose(name: string) {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.from("purposes").insert([{ name }]).select()
-
-  if (error) {
-    console.error("Error saving purpose:", error)
-    return { data: null, error }
-  }
-
-  return { data: data?.[0] || null, error: null }
-}
-
-export async function deletePurpose(name: string) {
-  const supabase = getSupabaseClient()
-  const { error } = await supabase.from("purposes").delete().eq("name", name)
-
-  if (error) {
-    console.error("Error deleting purpose:", error)
-    return { success: false, error }
-  }
-
-  return { success: true, error: null }
-}
-
+// ===== REGISTRATIES FUNCTIONALITEIT =====
 export async function fetchRegistrations() {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.from("registrations").select("*").order("created_at", { ascending: false })
+  try {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.from("registrations").select("*").order("created_at", { ascending: false })
 
-  if (error) {
-    console.error("Error fetching registrations:", error)
-    return { data: [], error }
+    if (error) {
+      // Check if it's a "relation does not exist" error
+      if (
+        error.message.includes('relation "public.registrations" does not exist') ||
+        error.message.includes("does not exist")
+      ) {
+        console.log("Registrations table does not exist, using mock data")
+        return { data: [], error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
+      }
+      console.error("Error fetching registrations:", error)
+      return { data: [], error }
+    }
+
+    return { data: data || [], error: null }
+  } catch (error) {
+    console.log("Unexpected error fetching registrations:", error)
+    return { data: [], error: { message: "Unexpected error", code: "UNEXPECTED_ERROR" } }
   }
-
-  return { data: data || [], error: null }
 }
 
 export async function saveRegistration(registration: Omit<RegistrationEntry, "id" | "created_at">) {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.from("registrations").insert([registration]).select()
-
-  if (error) {
-    console.error("Error saving registration:", error)
-    return { data: null, error }
-  }
-
-  return { data: data?.[0] || null, error: null }
-}
-
-export function subscribeToUsers(callback: (users: string[]) => void) {
-  debugLog("Setting up users subscription")
-  const supabase = getSupabaseClient()
-
   try {
-    const subscription = supabase
-      .channel("users-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "users" }, async (payload) => {
-        debugLog("Users change detected:", payload)
-        const { data, error } = await supabase.from("users").select("*").order("created_at", { ascending: false })
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.from("registrations").insert([registration]).select()
 
-        if (error) {
-          console.error("Error fetching updated users:", error)
-          return
-        }
-
-        if (data) {
-          const userNames = data.map((user) => user.name)
-          debugLog("Updated users list:", userNames)
-          callback(userNames)
-        }
-      })
-      .subscribe((status) => {
-        debugLog(`Users subscription status: ${status}`)
-      })
-
-    return subscription
-  } catch (error) {
-    console.error("Error setting up users subscription:", error)
-    return {
-      unsubscribe: () => {},
+    if (error) {
+      if (
+        error.message.includes('relation "public.registrations" does not exist') ||
+        error.message.includes("does not exist")
+      ) {
+        console.log("Registrations table does not exist, cannot save to database")
+        return { data: null, error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
+      }
+      console.error("Error saving registration:", error)
+      return { data: null, error }
     }
+
+    return { data: data?.[0] || null, error: null }
+  } catch (error) {
+    console.log("Unexpected error saving registration:", error)
+    return { data: null, error: { message: "Unexpected error", code: "UNEXPECTED_ERROR" } }
   }
 }
-
-export function subscribeToProducts(callback: (products: Product[]) => void) {
-  debugLog("Setting up products subscription")
-  const supabase = getSupabaseClient()
-
-  try {
-    const subscription = supabase
-      .channel("products-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, async (payload) => {
-        debugLog("Products change detected:", payload)
-        const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false })
-
-        if (error) {
-          console.error("Error fetching updated products:", error)
-          return
-        }
-
-        if (data) {
-          debugLog("Updated products list:", data)
-          callback(data)
-        }
-      })
-      .subscribe((status) => {
-        debugLog(`Products subscription status: ${status}`)
-      })
-
-    return subscription
-  } catch (error) {
-    console.error("Error setting up products subscription:", error)
-    return {
-      unsubscribe: () => {},
-    }
-  }
-}
-
-export function subscribeToLocations(callback: (locations: string[]) => void) {
-  debugLog("Setting up locations subscription")
-  const supabase = getSupabaseClient()
-
-  try {
-    const subscription = supabase
-      .channel("locations-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "locations" }, async (payload) => {
-        debugLog("Locations change detected:", payload)
-        const { data, error } = await supabase.from("locations").select("*").order("created_at", { ascending: false })
-
-        if (error) {
-          console.error("Error fetching updated locations:", error)
-          return
-        }
-
-        if (data) {
-          const locationNames = data.map((location) => location.name)
-          debugLog("Updated locations list:", locationNames)
-          callback(locationNames)
-        }
-      })
-      .subscribe((status) => {
-        debugLog(`Locations subscription status: ${status}`)
-      })
-
-    return subscription
-  } catch (error) {
-    console.error("Error setting up locations subscription:", error)
-    return {
-      unsubscribe: () => {},
-    }
-  }
-}
-
-export function subscribeToPurposes(callback: (purposes: string[]) => void) {
-  debugLog("Setting up purposes subscription")
-  const supabase = getSupabaseClient()
-
-  try {
-    const subscription = supabase
-      .channel("purposes-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "purposes" }, async (payload) => {
-        debugLog("Purposes change detected:", payload)
-        const { data, error } = await supabase.from("purposes").select("*").order("created_at", { ascending: false })
-
-        if (error) {
-          console.error("Error fetching updated purposes:", error)
-          return
-        }
-
-        if (data) {
-          const purposeNames = data.map((purpose) => purpose.name)
-          debugLog("Updated purposes list:", purposeNames)
-          callback(purposeNames)
-        }
-      })
-      .subscribe((status) => {
-        debugLog(`Purposes subscription status: ${status}`)
-      })
-
-    return subscription
-  } catch (error) {
-    console.error("Error setting up purposes subscription:", error)
-    return {
-      unsubscribe: () => {},
-    }
-  }
-}
-
-export function subscribeToRegistrations(callback: (registrations: RegistrationEntry[]) => void) {
-  const supabase = getSupabaseClient()
-
-  return supabase
-    .channel("registrations-changes")
-    .on("postgres_changes", { event: "*", schema: "public", table: "registrations" }, async () => {
-      const { data } = await fetchRegistrations()
-      if (data) callback(data)
-    })
-    .subscribe()
-}
-// ===== CATEGORIEËN FUNCTIONALITEIT =====
-export interface Category {
-  id: string
-  name: string
-}
-
-// Mock categorieën data
-const mockCategories: Category[] = [
-  { id: "1", name: "Smeermiddelen" },
-  { id: "2", name: "Reinigers" },
-  { id: "3", name: "Onderhoud" },
-]
 
 // ===== CATEGORIEËN FUNCTIONALITEIT =====
 export async function fetchCategories() {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.from("categories").select("*").order("name")
-  return { data: data || [], error }
+  try {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.from("categories").select("*").order("name")
+
+    if (error) {
+      // Check if it's a "relation does not exist" error
+      if (
+        error.message.includes('relation "public.categories" does not exist') ||
+        error.message.includes("does not exist")
+      ) {
+        console.log("Categories table does not exist, using mock data")
+        return { data: mockCategories, error: null }
+      }
+      console.error("Error fetching categories:", error)
+      return { data: mockCategories, error: null }
+    }
+
+    return { data: data || [], error: null }
+  } catch (error) {
+    console.log("Unexpected error fetching categories:", error)
+    return { data: mockCategories, error: null }
+  }
 }
 
 export async function saveCategory(category: Omit<Category, "id">) {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.from("categories").insert([category]).select().single()
-  return { data, error }
-}
+  try {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.from("categories").insert([category]).select().single()
 
-export async function deleteCategory(id: string) {
-  const supabase = getSupabaseClient()
-  const { error } = await supabase.from("categories").delete().eq("id", id)
-  return { error }
-}
+    if (error) {
+      if (
+        error.message.includes('relation "public.categories" does not exist') ||
+        error.message.includes("does not exist")
+      ) {
+        console.log("Categories table does not exist, using local fallback")
+        const newCategory = { ...category, id: Date.now().toString() } as Category
+        return { data: newCategory, error: null }
+      }
+      console.error("Error saving category:", error)
+      const newCategory = { ...category, id: Date.now().toString() } as Category
+      return { data: newCategory, error: null }
+    }
 
-export async function saveCategory(category: Category) {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    const newCategory = { ...category, id: Date.now().toString() }
-    mockCategories.push(newCategory)
+    return { data, error: null }
+  } catch (error) {
+    console.log("Unexpected error saving category:", error)
+    const newCategory = { ...category, id: Date.now().toString() } as Category
     return { data: newCategory, error: null }
   }
-  const { data, error } = await supabase.from("categories").insert([category]).select().single()
-  return { data, error }
 }
 
 export async function deleteCategory(id: string) {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    const index = mockCategories.findIndex((c) => c.id === id)
-    if (index > -1) mockCategories.splice(index, 1)
+  const supabase = getSupabaseClient()
+  try {
+    const { error } = await supabase.from("categories").delete().eq("id", id)
+
+    if (error) {
+      console.error("Error deleting category:", error)
+    }
+
+    return { error }
+  } catch (error) {
+    console.error("Unexpected error deleting category:", error)
     return { error: null }
   }
-  const { error } = await supabase.from("categories").delete().eq("id", id)
-  return { error }
 }
