@@ -55,8 +55,9 @@ const pieChartLabelStyle = {
   fill: "#2d3748",
 }
 
-// Import jsQR
-import jsQR from "jsqr"
+// Verwijder de import van jsQR
+// Verwijder deze regel:
+// import jsQR from "jsqr"
 
 export default function ProductRegistrationApp() {
   // Basic state
@@ -2024,19 +2025,32 @@ export default function ProductRegistrationApp() {
         </Dialog>
       </div>
 
+      {/* Vervang ook de showQrScanner implementatie met een eenvoudige dialoog */}
+      {/* Vervang de showQrScanner code (net boven de QrScanner component) met: */}
       {showQrScanner && (
-        <div className="fixed top-0 left-0 w-full h-full bg-gray-900 bg-opacity-80 z-50 flex items-center justify-center">
-          <div className="bg-white p-4 rounded-lg shadow-lg">
-            <QrScanner onResult={handleQrCodeDetected} onError={(error) => console.error(error)} />
-            <Button onClick={stopQrScanner} className="mt-4 w-full">
-              Stop Scanner
-            </Button>
-          </div>
-        </div>
+        <Dialog open={showQrScanner} onOpenChange={setShowQrScanner}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>QR Code Scanner</DialogTitle>
+              <DialogDescription>Voer QR code handmatig in</DialogDescription>
+            </DialogHeader>
+            <QrScanner
+              onResult={handleQrCodeDetected}
+              onError={(error) => {
+                console.error(error)
+                setImportError("Fout bij scannen QR code")
+                setTimeout(() => setImportError(""), 3000)
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )
 }
+
+// Vervang de QrScanner component met een eenvoudige dialoog
+// Vervang de hele QrScanner component (onderaan het bestand) met deze versie:
 
 interface QrScannerProps {
   onResult: (result: string) => void
@@ -2044,64 +2058,33 @@ interface QrScannerProps {
 }
 
 const QrScanner: React.FC<QrScannerProps> = ({ onResult, onError }) => {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [scanning, setScanning] = useState(false)
+  const [qrCode, setQrCode] = useState("")
 
-  useEffect(() => {
-    const startScanning = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          setScanning(true)
-        }
-      } catch (err) {
-        onError(err)
-      }
-    }
-
-    startScanning()
-
-    return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream
-        stream.getTracks().forEach((track) => track.stop())
-      }
-      setScanning(false)
-    }
-  }, [onResult, onError])
-
-  const tick = () => {
-    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
-      const video = videoRef.current
-      const canvasElement = document.createElement("canvas")
-      const canvas = canvasElement.getContext("2d")
-
-      canvasElement.height = video.videoHeight
-      canvasElement.width = video.videoWidth
-      canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height)
-
-      const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height)
-      const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "dontInvert",
-      })
-
-      if (code) {
-        onResult(code.data)
-      }
-    }
-
-    if (scanning) {
-      requestAnimationFrame(tick)
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (qrCode.trim()) {
+      onResult(qrCode.trim())
     }
   }
 
-  useEffect(() => {
-    if (scanning) {
-      tick()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanning])
-
-  return <video ref={videoRef} autoPlay muted className="w-full h-64 object-cover" />
+  return (
+    <div className="p-4">
+      <h3 className="text-lg font-medium mb-4">QR Code Invoeren</h3>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="qr-input">Voer QR code handmatig in</Label>
+          <Input
+            id="qr-input"
+            value={qrCode}
+            onChange={(e) => setQrCode(e.target.value)}
+            placeholder="Bijv. IFLS001"
+            autoFocus
+          />
+        </div>
+        <Button type="submit" className="w-full">
+          Bevestigen
+        </Button>
+      </form>
+    </div>
+  )
 }
