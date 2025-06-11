@@ -799,8 +799,7 @@ export default function ProductRegistrationApp() {
             <div className="flex flex-col lg:flex-row items-center gap-6">
               <div className="flex-shrink-0">
                 <div className="flex items-center bg-white p-4 rounded-lg shadow-sm border">
-                  <div className="w-1 h-12 bg-amber-500 mr-4"></div>
-                  <div className="text-2xl font-bold text-gray-800 tracking-wide">DEMATIC</div>
+                  <img src="/images/dematic-logo.png" alt="DEMATIC Logo" className="h-12 w-auto" />
                 </div>
               </div>
 
@@ -1819,14 +1818,10 @@ export default function ProductRegistrationApp() {
                               })}
                             </Pie>
                             <Tooltip
-                              formatter={(value, name) => [
-                                <span key="value" style={{ fontWeight: "bold", color: "#333" }}>
-                                  {value}
-                                </span>,
-                                <span key="name" style={{ fontWeight: "bold", color: "#333" }}>
-                                  {name}
-                                </span>,
-                              ]}
+                              formatter={(value, name) => [`Aantal: ${value}`, name]}
+                              labelFormatter={() => ""}
+                              contentStyle={{ padding: "8px", borderRadius: "4px", border: "none" }}
+                              itemStyle={{ color: "#333" }}
                             />
                           </PieChart>
                         </ResponsiveContainer>
