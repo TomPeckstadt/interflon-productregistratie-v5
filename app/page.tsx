@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Download, Plus, Trash2, Edit, Search, X, QrCode, ChevronDown } from "lucide-react"
+import { Download, Plus, Trash2, Edit, Search, X, QrCode, ChevronDown, Paperclip, FileText } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,8 @@ interface Product {
   qrcode?: string
   categoryId?: string
   created_at?: string
+  attachmentUrl?: string
+  attachmentName?: string
 }
 
 interface Category {
@@ -175,6 +177,11 @@ export default function ProductRegistrationApp() {
 
   // New state for user search
   const [userSearchQuery, setUserSearchQuery] = useState("")
+
+  // Attachment states
+  const [showAttachmentDialog, setShowAttachmentDialog] = useState(false)
+  const [attachmentProduct, setAttachmentProduct] = useState<Product | null>(null)
+  const attachmentFileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const savedUsers = localStorage.getItem("interflon-users")
@@ -332,6 +339,65 @@ export default function ProductRegistrationApp() {
     setSelectedProduct(product.name)
     setProductSearchQuery(product.name)
     setShowProductDropdown(false)
+  }
+
+  // Attachment functions
+  const handleAttachmentUpload = (product: Product) => {
+    setAttachmentProduct(product)
+    setShowAttachmentDialog(true)
+  }
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file && attachmentProduct) {
+      if (file.type === "application/pdf") {
+        // Create a blob URL for the PDF
+        const blobUrl = URL.createObjectURL(file)
+
+        // Update the product with attachment info
+        setProducts((prevProducts) =>
+          prevProducts.map((p) =>
+            p.id === attachmentProduct.id ? { ...p, attachmentUrl: blobUrl, attachmentName: file.name } : p,
+          ),
+        )
+
+        setImportMessage(`✅ PDF bijlage toegevoegd aan ${attachmentProduct.name}`)
+        setTimeout(() => setImportMessage(""), 3000)
+        setShowAttachmentDialog(false)
+        setAttachmentProduct(null)
+      } else {
+        setImportError("❌ Alleen PDF bestanden zijn toegestaan")
+        setTimeout(() => setImportError(""), 3000)
+      }
+    }
+
+    // Reset file input
+    if (attachmentFileInputRef.current) {
+      attachmentFileInputRef.current.value = ""
+    }
+  }
+
+  const openAttachment = (product: Product) => {
+    if (product.attachmentUrl) {
+      window.open(product.attachmentUrl, "_blank")
+    }
+  }
+
+  const removeAttachment = (product: Product) => {
+    // Revoke the blob URL to free memory
+    if (product.attachmentUrl) {
+      URL.revokeObjectURL(product.attachmentUrl)
+    }
+
+    // Update the product to remove attachment
+    setProducts((prevProducts) =>
+      prevProducts.map((p) =>
+        p.id === product.id ? { ...p, attachmentUrl: undefined, attachmentName: undefined } : p,
+      ),
+    )
+
+    setImportMessage(`✅ Bijlage verwijderd van ${product.name}`)
+    setTimeout(() => setImportMessage(""), 2000)
   }
 
   // File import functions
@@ -634,6 +700,11 @@ export default function ProductRegistrationApp() {
   }
 
   const removeProduct = (productToRemove: Product) => {
+    // Clean up attachment blob URL if it exists
+    if (productToRemove.attachmentUrl) {
+      URL.revokeObjectURL(productToRemove.attachmentUrl)
+    }
+
     setProducts((prev) => prev.filter((p) => p.id !== productToRemove.id))
     setImportMessage("✅ Product verwijderd!")
     setTimeout(() => setImportMessage(""), 2000)
@@ -1567,13 +1638,14 @@ export default function ProductRegistrationApp() {
                         <TableHead>Naam</TableHead>
                         <TableHead className="hidden md:table-cell">QR Code</TableHead>
                         <TableHead className="hidden md:table-cell">Categorie</TableHead>
+                        <TableHead className="hidden md:table-cell">Bijlage</TableHead>
                         <TableHead className="text-right">Acties</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {getFilteredAndSortedProducts().length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                          <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                             {productSearchQuery || selectedCategory !== "all"
                               ? `Geen producten gevonden${productSearchQuery ? ` voor "${productSearchQuery}"` : ""}${selectedCategory !== "all" ? ` in categorie "${getCategoryName(selectedCategory)}"` : ""}`
                               : "Geen producten beschikbaar"}
@@ -1600,6 +1672,44 @@ export default function ProductRegistrationApp() {
                               ) : (
                                 "-"
                               )}
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              <div className="flex items-center gap-2">
+                                {product.attachmentUrl ? (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => openAttachment(product)}
+                                      className="h-8 px-2 text-xs"
+                                      title={`Open ${product.attachmentName}`}
+                                    >
+                                      <FileText className="h-3 w-3 mr-1" />
+                                      PDF
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => removeAttachment(product)}
+                                      className="h-8 px-2 text-xs text-red-600 hover:text-red-700"
+                                      title="Verwijder bijlage"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleAttachmentUpload(product)}
+                                    className="h-8 px-2 text-xs"
+                                    title="Voeg PDF bijlage toe"
+                                  >
+                                    <Paperclip className="h-3 w-3 mr-1" />
+                                    PDF
+                                  </Button>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-right">
                               <Button
@@ -2244,6 +2354,35 @@ export default function ProductRegistrationApp() {
               </Button>
               <Button type="submit" onClick={updatePurpose}>
                 Opslaan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Attachment Upload Dialog */}
+        <Dialog open={showAttachmentDialog} onOpenChange={setShowAttachmentDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>PDF Bijlage Toevoegen</DialogTitle>
+              <DialogDescription>Voeg een PDF bijlage toe aan {attachmentProduct?.name}</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="attachment-file">Selecteer PDF bestand</Label>
+                <Input
+                  id="attachment-file"
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileSelect}
+                  ref={attachmentFileInputRef}
+                  className="cursor-pointer"
+                />
+                <p className="text-xs text-gray-500">Alleen PDF bestanden zijn toegestaan</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setShowAttachmentDialog(false)}>
+                Annuleren
               </Button>
             </DialogFooter>
           </DialogContent>
