@@ -49,6 +49,12 @@ interface Registration {
   qrcode?: string
 }
 
+const pieChartLabelStyle = {
+  fontSize: "12px",
+  fontWeight: "bold",
+  fill: "#2d3748",
+}
+
 export default function ProductRegistrationApp() {
   // Basic state
   const [currentUser, setCurrentUser] = useState("")
@@ -1795,7 +1801,27 @@ export default function ProductRegistrationApp() {
                               cy="50%"
                               outerRadius={80}
                               fill="#8884d8"
-                              label
+                              label={({ name, value, cx, cy, midAngle, innerRadius, outerRadius }) => {
+                                const RADIAN = Math.PI / 180
+                                const radius = innerRadius + (outerRadius - innerRadius) * 0.5
+                                const x = cx + radius * Math.cos(-midAngle * RADIAN)
+                                const y = cy + radius * Math.sin(-midAngle * RADIAN)
+
+                                return (
+                                  <text
+                                    x={x}
+                                    y={y}
+                                    fill="#2d3748"
+                                    textAnchor={x > cx ? "start" : "end"}
+                                    dominantBaseline="central"
+                                    fontSize="11"
+                                    fontWeight="bold"
+                                  >
+                                    {`${name}: ${value}`}
+                                  </text>
+                                )
+                              }}
+                              labelLine={false}
                             >
                               {stats.pieChartData.map((entry, index) => {
                                 const pastelColors = [
@@ -1811,7 +1837,12 @@ export default function ProductRegistrationApp() {
                                 return <Cell key={`cell-${index}`} fill={pastelColors[index % pastelColors.length]} />
                               })}
                             </Pie>
-                            <Tooltip />
+                            <Tooltip
+                              formatter={(value, name) => [
+                                <span style={{ fontWeight: "bold", color: "#333" }}>{value}</span>,
+                                <span style={{ fontWeight: "bold", color: "#333" }}>{name}</span>,
+                              ]}
+                            />
                           </PieChart>
                         </ResponsiveContainer>
                       </CardContent>
