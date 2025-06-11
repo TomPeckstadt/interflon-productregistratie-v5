@@ -132,6 +132,14 @@ export default function ProductRegistrationApp() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [showEditCategoryDialog, setShowEditCategoryDialog] = useState(false)
 
+  // Edit states voor alle entiteiten
+  const [editingUser, setEditingUser] = useState<string | null>(null)
+  const [showEditUserDialog, setShowEditUserDialog] = useState(false)
+  const [editingLocation, setEditingLocation] = useState<string | null>(null)
+  const [showEditLocationDialog, setShowEditLocationDialog] = useState(false)
+  const [editingPurpose, setEditingPurpose] = useState<string | null>(null)
+  const [showEditPurposeDialog, setShowEditPurposeDialog] = useState(false)
+
   // Filter en zoek states
   const [searchQuery, setSearchQuery] = useState("")
   const [filterUser, setFilterUser] = useState("all")
@@ -480,6 +488,84 @@ export default function ProductRegistrationApp() {
       setImportMessage("✅ Product bijgewerkt!")
       setShowEditDialog(false)
       setEditingProduct(null)
+      setTimeout(() => setImportMessage(""), 2000)
+    }
+  }
+
+  const updateUser = () => {
+    if (editingUser && newUserName.trim()) {
+      const oldUser = editingUser
+      const newUser = newUserName.trim()
+
+      // Update users array
+      setUsers((prevUsers) => prevUsers.map((u) => (u === oldUser ? newUser : u)))
+
+      // Update registrations met de nieuwe gebruikersnaam
+      setRegistrations((prevRegistrations) =>
+        prevRegistrations.map((r) => (r.user === oldUser ? { ...r, user: newUser } : r)),
+      )
+
+      // Update current user if it was the edited one
+      if (currentUser === oldUser) {
+        setCurrentUser(newUser)
+      }
+
+      setImportMessage("✅ Gebruiker bijgewerkt!")
+      setShowEditUserDialog(false)
+      setEditingUser(null)
+      setNewUserName("")
+      setTimeout(() => setImportMessage(""), 2000)
+    }
+  }
+
+  const updateLocation = () => {
+    if (editingLocation && newLocationName.trim()) {
+      const oldLocation = editingLocation
+      const newLocation = newLocationName.trim()
+
+      // Update locations array
+      setLocations((prevLocations) => prevLocations.map((l) => (l === oldLocation ? newLocation : l)))
+
+      // Update registrations met de nieuwe locatie
+      setRegistrations((prevRegistrations) =>
+        prevRegistrations.map((r) => (r.location === oldLocation ? { ...r, location: newLocation } : r)),
+      )
+
+      // Update current location if it was the edited one
+      if (location === oldLocation) {
+        setLocation(newLocation)
+      }
+
+      setImportMessage("✅ Locatie bijgewerkt!")
+      setShowEditLocationDialog(false)
+      setEditingLocation(null)
+      setNewLocationName("")
+      setTimeout(() => setImportMessage(""), 2000)
+    }
+  }
+
+  const updatePurpose = () => {
+    if (editingPurpose && newPurposeName.trim()) {
+      const oldPurpose = editingPurpose
+      const newPurpose = newPurposeName.trim()
+
+      // Update purposes array
+      setPurposes((prevPurposes) => prevPurposes.map((p) => (p === oldPurpose ? newPurpose : p)))
+
+      // Update registrations met het nieuwe doel
+      setRegistrations((prevRegistrations) =>
+        prevRegistrations.map((r) => (r.purpose === oldPurpose ? { ...r, purpose: newPurpose } : r)),
+      )
+
+      // Update current purpose if it was the edited one
+      if (purpose === oldPurpose) {
+        setPurpose(newPurpose)
+      }
+
+      setImportMessage("✅ Doel bijgewerkt!")
+      setShowEditPurposeDialog(false)
+      setEditingPurpose(null)
+      setNewPurposeName("")
       setTimeout(() => setImportMessage(""), 2000)
     }
   }
@@ -1104,7 +1190,7 @@ export default function ProductRegistrationApp() {
                       value={newUserName}
                       onChange={(e) => setNewUserName(e.target.value)}
                     />
-                    <Button onClick={addNewUser}>
+                    <Button onClick={addNewUser} className="bg-orange-600 hover:bg-orange-700">
                       <Plus className="mr-2 h-4 w-4" /> Toevoegen
                     </Button>
                   </div>
@@ -1145,6 +1231,18 @@ export default function ProductRegistrationApp() {
                         <TableRow key={user}>
                           <TableCell>{user}</TableCell>
                           <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingUser(user)
+                                setNewUserName(user)
+                                setShowEditUserDialog(true)
+                              }}
+                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
                             <Button variant="destructive" size="icon" onClick={() => removeUser(user)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1208,7 +1306,7 @@ export default function ProductRegistrationApp() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button onClick={addNewProduct}>
+                    <Button onClick={addNewProduct} className="bg-orange-600 hover:bg-orange-700">
                       <Plus className="mr-2 h-4 w-4" /> Toevoegen
                     </Button>
                   </div>
@@ -1276,6 +1374,7 @@ export default function ProductRegistrationApp() {
                                 setEditingProduct(product)
                                 setShowEditDialog(true)
                               }}
+                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -1307,7 +1406,7 @@ export default function ProductRegistrationApp() {
                       value={newCategoryName}
                       onChange={(e) => setNewCategoryName(e.target.value)}
                     />
-                    <Button onClick={addNewCategory}>
+                    <Button onClick={addNewCategory} className="bg-orange-600 hover:bg-orange-700">
                       <Plus className="mr-2 h-4 w-4" /> Toevoegen
                     </Button>
                   </div>
@@ -1331,6 +1430,7 @@ export default function ProductRegistrationApp() {
                                 setEditingCategory(category)
                                 setShowEditCategoryDialog(true)
                               }}
+                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -1362,7 +1462,7 @@ export default function ProductRegistrationApp() {
                       value={newLocationName}
                       onChange={(e) => setNewLocationName(e.target.value)}
                     />
-                    <Button onClick={addNewLocation}>
+                    <Button onClick={addNewLocation} className="bg-orange-600 hover:bg-orange-700">
                       <Plus className="mr-2 h-4 w-4" /> Toevoegen
                     </Button>
                   </div>
@@ -1403,6 +1503,18 @@ export default function ProductRegistrationApp() {
                         <TableRow key={location}>
                           <TableCell>{location}</TableCell>
                           <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingLocation(location)
+                                setNewLocationName(location)
+                                setShowEditLocationDialog(true)
+                              }}
+                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
                             <Button variant="destructive" size="icon" onClick={() => removeLocation(location)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1431,7 +1543,7 @@ export default function ProductRegistrationApp() {
                       value={newPurposeName}
                       onChange={(e) => setNewPurposeName(e.target.value)}
                     />
-                    <Button onClick={addNewPurpose}>
+                    <Button onClick={addNewPurpose} className="bg-orange-600 hover:bg-orange-700">
                       <Plus className="mr-2 h-4 w-4" /> Toevoegen
                     </Button>
                   </div>
@@ -1472,6 +1584,18 @@ export default function ProductRegistrationApp() {
                         <TableRow key={purpose}>
                           <TableCell>{purpose}</TableCell>
                           <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingPurpose(purpose)
+                                setNewPurposeName(purpose)
+                                setShowEditPurposeDialog(true)
+                              }}
+                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
                             <Button variant="destructive" size="icon" onClick={() => removePurpose(purpose)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1722,7 +1846,9 @@ export default function ProductRegistrationApp() {
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>
               Annuleren
             </Button>
-            <Button onClick={updateProduct}>Opslaan</Button>
+            <Button onClick={updateProduct} className="bg-orange-600 hover:bg-orange-700">
+              Opslaan
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1750,7 +1876,9 @@ export default function ProductRegistrationApp() {
             <Button variant="outline" onClick={() => setShowEditCategoryDialog(false)}>
               Annuleren
             </Button>
-            <Button onClick={updateCategory}>Opslaan</Button>
+            <Button onClick={updateCategory} className="bg-orange-600 hover:bg-orange-700">
+              Opslaan
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1775,6 +1903,86 @@ export default function ProductRegistrationApp() {
               Annuleren
             </Button>
             <Button onClick={scanQrCode}>Invoeren</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gebruiker Bewerken</DialogTitle>
+            <DialogDescription>Bewerk de gebruikersnaam</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-user-name">Gebruikersnaam</Label>
+              <Input id="edit-user-name" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditUserDialog(false)}>
+              Annuleren
+            </Button>
+            <Button onClick={updateUser} className="bg-orange-600 hover:bg-orange-700">
+              Opslaan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Location Dialog */}
+      <Dialog open={showEditLocationDialog} onOpenChange={setShowEditLocationDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Locatie Bewerken</DialogTitle>
+            <DialogDescription>Bewerk de locatienaam</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-location-name">Locatienaam</Label>
+              <Input
+                id="edit-location-name"
+                value={newLocationName}
+                onChange={(e) => setNewLocationName(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditLocationDialog(false)}>
+              Annuleren
+            </Button>
+            <Button onClick={updateLocation} className="bg-orange-600 hover:bg-orange-700">
+              Opslaan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Purpose Dialog */}
+      <Dialog open={showEditPurposeDialog} onOpenChange={setShowEditPurposeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Doel Bewerken</DialogTitle>
+            <DialogDescription>Bewerk de doelnaam</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-purpose-name">Doelnaam</Label>
+              <Input
+                id="edit-purpose-name"
+                value={newPurposeName}
+                onChange={(e) => setNewPurposeName(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditPurposeDialog(false)}>
+              Annuleren
+            </Button>
+            <Button onClick={updatePurpose} className="bg-orange-600 hover:bg-orange-700">
+              Opslaan
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
