@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog"
 
 // Charts voor statistieken
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
+import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 
 // Types
 interface Product {
@@ -54,6 +54,9 @@ const pieChartLabelStyle = {
   fontWeight: "bold",
   fill: "#2d3748",
 }
+
+// Import jsQR
+import jsQR from "jsqr"
 
 export default function ProductRegistrationApp() {
   // Basic state
@@ -1644,10 +1647,10 @@ export default function ProductRegistrationApp() {
               <CardContent className="p-6">
                 <div className="space-y-8">
                   {/* Top 3 statistiek kaarten */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Card className="shadow-sm">
-                      <CardHeader>
-                        <CardTitle>Totaal Registraties</CardTitle>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg">Totaal Registraties</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-3xl font-bold">{stats.totalRegistrations}</div>
@@ -1655,8 +1658,8 @@ export default function ProductRegistrationApp() {
                     </Card>
 
                     <Card className="shadow-sm">
-                      <CardHeader>
-                        <CardTitle>Unieke Gebruikers</CardTitle>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg">Unieke Gebruikers</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-3xl font-bold">{stats.uniqueUsers}</div>
@@ -1664,8 +1667,8 @@ export default function ProductRegistrationApp() {
                     </Card>
 
                     <Card className="shadow-sm">
-                      <CardHeader>
-                        <CardTitle>Unieke Producten</CardTitle>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg">Unieke Producten</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-3xl font-bold">{stats.uniqueProducts}</div>
@@ -1674,11 +1677,11 @@ export default function ProductRegistrationApp() {
                   </div>
 
                   {/* Recente Activiteit */}
-                  <Card className="shadow-sm" style={{ backgroundColor: "#f5f1e8" }}>
-                    <CardHeader>
-                      <CardTitle>Recente Activiteit</CardTitle>
+                  <Card className="shadow-sm">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Recente Activiteit</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-0">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1708,14 +1711,14 @@ export default function ProductRegistrationApp() {
                     </CardContent>
                   </Card>
 
-                  {/* Top 5 tabellen met taartdiagram */}
+                  {/* Bottom row met 4 secties */}
                   <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
                     {/* Top 5 Gebruikers */}
                     <Card className="shadow-sm">
                       <CardHeader className="pb-3">
                         <CardTitle className="text-lg">Top 5 Gebruikers</CardTitle>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="p-0">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -1740,7 +1743,7 @@ export default function ProductRegistrationApp() {
                       <CardHeader className="pb-3">
                         <CardTitle className="text-lg">Top 5 Producten</CardTitle>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="p-0">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -1765,7 +1768,7 @@ export default function ProductRegistrationApp() {
                       <CardHeader className="pb-3">
                         <CardTitle className="text-lg">Top 5 Locaties</CardTitle>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="p-0">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -1785,7 +1788,7 @@ export default function ProductRegistrationApp() {
                       </CardContent>
                     </Card>
 
-                    {/* Product Verdeling Taartdiagram - blijft hetzelfde */}
+                    {/* Product Verdeling Taartdiagram */}
                     <Card className="shadow-sm">
                       <CardHeader className="pb-3">
                         <CardTitle className="text-lg">Product Verdeling</CardTitle>
@@ -1839,8 +1842,12 @@ export default function ProductRegistrationApp() {
                             </Pie>
                             <Tooltip
                               formatter={(value, name) => [
-                                <span style={{ fontWeight: "bold", color: "#333" }}>{value}</span>,
-                                <span style={{ fontWeight: "bold", color: "#333" }}>{name}</span>,
+                                <span key="value" style={{ fontWeight: "bold", color: "#333" }}>
+                                  {value}
+                                </span>,
+                                <span key="name" style={{ fontWeight: "bold", color: "#333" }}>
+                                  {name}
+                                </span>,
                               ]}
                             />
                           </PieChart>
@@ -1848,223 +1855,253 @@ export default function ProductRegistrationApp() {
                       </CardContent>
                     </Card>
                   </div>
-
-                  {/* Charts onderaan - alleen het bar chart */}
-                  <div className="space-y-8">
-                    <div>
-                      <h2 className="text-xl font-semibold mb-4">Registraties per Maand</h2>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={stats.chartMonthlyData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="value" fill="#8884d8" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Dialogs */}
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Product Bewerken</DialogTitle>
+              <DialogDescription>Pas de productnaam en QR code aan.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  Naam
+                </Label>
+                <Input
+                  id="name"
+                  value={editingProduct?.name || ""}
+                  onChange={(e) => setEditingProduct((prev) => (prev ? { ...prev, name: e.target.value } : prev))}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="qr-code" className="text-right">
+                  QR Code
+                </Label>
+                <Input
+                  id="qr-code"
+                  value={editingProduct?.qrcode || ""}
+                  onChange={(e) => setEditingProduct((prev) => (prev ? { ...prev, qrcode: e.target.value } : prev))}
+                  className="col-span-3"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setShowEditDialog(false)}>
+                Annuleren
+              </Button>
+              <Button type="submit" onClick={updateProduct}>
+                Opslaan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showEditCategoryDialog} onOpenChange={setShowEditCategoryDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Categorie Bewerken</DialogTitle>
+              <DialogDescription>Pas de categorienaam aan.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  Naam
+                </Label>
+                <Input
+                  id="name"
+                  value={editingCategory?.name || ""}
+                  onChange={(e) => setEditingCategory((prev) => (prev ? { ...prev, name: e.target.value } : prev))}
+                  className="col-span-3"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setShowEditCategoryDialog(false)}>
+                Annuleren
+              </Button>
+              <Button type="submit" onClick={updateCategory}>
+                Opslaan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Gebruiker Bewerken</DialogTitle>
+              <DialogDescription>Pas de gebruikersnaam aan.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  Naam
+                </Label>
+                <Input
+                  id="name"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setShowEditUserDialog(false)}>
+                Annuleren
+              </Button>
+              <Button type="submit" onClick={updateUser}>
+                Opslaan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showEditLocationDialog} onOpenChange={setShowEditLocationDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Locatie Bewerken</DialogTitle>
+              <DialogDescription>Pas de locatienaam aan.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  Naam
+                </Label>
+                <Input
+                  id="name"
+                  value={newLocationName}
+                  onChange={(e) => setNewLocationName(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setShowEditLocationDialog(false)}>
+                Annuleren
+              </Button>
+              <Button type="submit" onClick={updateLocation}>
+                Opslaan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showEditPurposeDialog} onOpenChange={setShowEditPurposeDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Doel Bewerken</DialogTitle>
+              <DialogDescription>Pas de doelnaam aan.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  Naam
+                </Label>
+                <Input
+                  id="name"
+                  value={newPurposeName}
+                  onChange={(e) => setNewPurposeName(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setShowEditPurposeDialog(false)}>
+                Annuleren
+              </Button>
+              <Button type="submit" onClick={updatePurpose}>
+                Opslaan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Edit Product Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Product Bewerken</DialogTitle>
-            <DialogDescription>Bewerk de productgegevens</DialogDescription>
-          </DialogHeader>
-          {editingProduct && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Productnaam</Label>
-                <Input
-                  id="edit-name"
-                  value={editingProduct.name}
-                  onChange={(e) => setEditingProduct((prev) => (prev ? { ...prev, name: e.target.value } : prev))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-qrcode">QR Code</Label>
-                <Input
-                  id="edit-qrcode"
-                  value={editingProduct.qrcode || ""}
-                  onChange={(e) => setEditingProduct((prev) => (prev ? { ...prev, qrcode: e.target.value } : prev))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-category">Categorie</Label>
-                <Select
-                  value={editingProduct.categoryId || "none"}
-                  onValueChange={(value) =>
-                    setEditingProduct((prev) =>
-                      prev ? { ...prev, categoryId: value === "none" ? undefined : value } : null,
-                    )
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecteer categorie" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Geen categorie</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Annuleren
+      {showQrScanner && (
+        <div className="fixed top-0 left-0 w-full h-full bg-gray-900 bg-opacity-80 z-50 flex items-center justify-center">
+          <div className="bg-white p-4 rounded-lg shadow-lg">
+            <QrScanner onResult={handleQrCodeDetected} onError={(error) => console.error(error)} />
+            <Button onClick={stopQrScanner} className="mt-4 w-full">
+              Stop Scanner
             </Button>
-            <Button onClick={updateProduct} className="bg-orange-600 hover:bg-orange-700">
-              Opslaan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Category Dialog */}
-      <Dialog open={showEditCategoryDialog} onOpenChange={setShowEditCategoryDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Categorie Bewerken</DialogTitle>
-            <DialogDescription>Bewerk de categorienaam</DialogDescription>
-          </DialogHeader>
-          {editingCategory && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-category-name">Categorienaam</Label>
-                <Input
-                  id="edit-category-name"
-                  value={editingCategory.name}
-                  onChange={(e) => setEditingCategory((prev) => (prev ? { ...prev, name: e.target.value } : prev))}
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditCategoryDialog(false)}>
-              Annuleren
-            </Button>
-            <Button onClick={updateCategory} className="bg-orange-600 hover:bg-orange-700">
-              Opslaan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* QR Scanner Modal */}
-      <Dialog open={showQrScanner} onOpenChange={setShowQrScanner}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>QR Code Scanner</DialogTitle>
-            <DialogDescription>Voer QR code handmatig in</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              type="text"
-              placeholder="Voer QR code handmatig in"
-              value={qrScanResult}
-              onChange={(e) => setQrScanResult(e.target.value)}
-            />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={stopQrScanner}>
-              Annuleren
-            </Button>
-            <Button onClick={scanQrCode}>Invoeren</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit User Dialog */}
-      <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Gebruiker Bewerken</DialogTitle>
-            <DialogDescription>Bewerk de gebruikersnaam</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-user-name">Gebruikersnaam</Label>
-              <Input id="edit-user-name" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditUserDialog(false)}>
-              Annuleren
-            </Button>
-            <Button onClick={updateUser} className="bg-orange-600 hover:bg-orange-700">
-              Opslaan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Location Dialog */}
-      <Dialog open={showEditLocationDialog} onOpenChange={setShowEditLocationDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Locatie Bewerken</DialogTitle>
-            <DialogDescription>Bewerk de locatienaam</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-location-name">Locatienaam</Label>
-              <Input
-                id="edit-location-name"
-                value={newLocationName}
-                onChange={(e) => setNewLocationName(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditLocationDialog(false)}>
-              Annuleren
-            </Button>
-            <Button onClick={updateLocation} className="bg-orange-600 hover:bg-orange-700">
-              Opslaan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Purpose Dialog */}
-      <Dialog open={showEditPurposeDialog} onOpenChange={setShowEditPurposeDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Doel Bewerken</DialogTitle>
-            <DialogDescription>Bewerk de doelnaam</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-purpose-name">Doelnaam</Label>
-              <Input
-                id="edit-purpose-name"
-                value={newPurposeName}
-                onChange={(e) => setNewPurposeName(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditPurposeDialog(false)}>
-              Annuleren
-            </Button>
-            <Button onClick={updatePurpose} className="bg-orange-600 hover:bg-orange-700">
-              Opslaan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   )
+}
+
+interface QrScannerProps {
+  onResult: (result: string) => void
+  onError: (error: any) => void
+}
+
+const QrScanner: React.FC<QrScannerProps> = ({ onResult, onError }) => {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [scanning, setScanning] = useState(false)
+
+  useEffect(() => {
+    const startScanning = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          setScanning(true)
+        }
+      } catch (err) {
+        onError(err)
+      }
+    }
+
+    startScanning()
+
+    return () => {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream
+        stream.getTracks().forEach((track) => track.stop())
+      }
+      setScanning(false)
+    }
+  }, [onResult, onError])
+
+  const tick = () => {
+    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+      const video = videoRef.current
+      const canvasElement = document.createElement("canvas")
+      const canvas = canvasElement.getContext("2d")
+
+      canvasElement.height = video.videoHeight
+      canvasElement.width = video.videoWidth
+      canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height)
+
+      const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height)
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "dontInvert",
+      })
+
+      if (code) {
+        onResult(code.data)
+      }
+    }
+
+    if (scanning) {
+      requestAnimationFrame(tick)
+    }
+  }
+
+  useEffect(() => {
+    if (scanning) {
+      tick()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanning])
+
+  return <video ref={videoRef} autoPlay muted className="w-full h-64 object-cover" />
 }
