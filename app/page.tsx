@@ -1720,14 +1720,14 @@ export default function ProductRegistrationApp() {
                           <TableHeader>
                             <TableRow>
                               <TableHead className="text-sm">Gebruiker</TableHead>
-                              <TableHead className="text-sm">Aantal</TableHead>
+                              <TableHead className="text-sm text-right">Aantal</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {stats.topUsers.map(([user, count]) => (
                               <TableRow key={user}>
                                 <TableCell className="text-sm">{user}</TableCell>
-                                <TableCell className="text-sm">{count}</TableCell>
+                                <TableCell className="text-sm text-right font-medium">{count}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -1745,14 +1745,14 @@ export default function ProductRegistrationApp() {
                           <TableHeader>
                             <TableRow>
                               <TableHead className="text-sm">Product</TableHead>
-                              <TableHead className="text-sm">Aantal</TableHead>
+                              <TableHead className="text-sm text-right">Aantal</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {stats.topProducts.map(([product, count]) => (
                               <TableRow key={product}>
                                 <TableCell className="text-sm">{product}</TableCell>
-                                <TableCell className="text-sm">{count}</TableCell>
+                                <TableCell className="text-sm text-right font-medium">{count}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -1770,14 +1770,14 @@ export default function ProductRegistrationApp() {
                           <TableHeader>
                             <TableRow>
                               <TableHead className="text-sm">Locatie</TableHead>
-                              <TableHead className="text-sm">Aantal</TableHead>
+                              <TableHead className="text-sm text-right">Aantal</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {stats.topLocations.map(([location, count]) => (
                               <TableRow key={location}>
                                 <TableCell className="text-sm">{location}</TableCell>
-                                <TableCell className="text-sm">{count}</TableCell>
+                                <TableCell className="text-sm text-right font-medium">{count}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -1785,7 +1785,7 @@ export default function ProductRegistrationApp() {
                       </CardContent>
                     </Card>
 
-                    {/* Product Verdeling Taartdiagram */}
+                    {/* Product Verdeling Taartdiagram - blijft hetzelfde */}
                     <Card className="shadow-sm">
                       <CardHeader className="pb-3">
                         <CardTitle className="text-lg">Product Verdeling</CardTitle>
