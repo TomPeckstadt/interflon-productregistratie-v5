@@ -1068,7 +1068,7 @@ export default function ProductRegistrationApp() {
               <div className="hidden md:block">{entries.length} registraties</div>
               <div className="flex items-center gap-2">
                 <span>
-                  Ingelogd als: {user.name} ({user.email})
+                  {'Ingelogd als: ' + user.name + ' (' + user.email + ')'}
                 </span>
                 <Button
                   onClick={handleLogout}
@@ -1084,7 +1084,7 @@ export default function ProductRegistrationApp() {
         </div>
       </header>
 
-      {/* Rest of your existing app content - keeping the same structure */}
+      {/* Rest of your existing app content */}
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
         {showSuccess && (
           <Alert className="mb-6 border-green-200 bg-green-50">
@@ -1114,34 +1114,34 @@ export default function ProductRegistrationApp() {
               Registreren
             </TabsTrigger>
             <TabsTrigger value="history" className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700">
-              Geschiedenis ({entries.length})
+              {'Geschiedenis (' + entries.length + ')'}
             </TabsTrigger>
             <TabsTrigger value="users" className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700">
-              Gebruikers ({users.length})
+              {'Gebruikers (' + users.length + ')'}
             </TabsTrigger>
             <TabsTrigger
               value="products"
               className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
             >
-              Producten ({products.length})
+              {'Producten (' + products.length + ')'}
             </TabsTrigger>
             <TabsTrigger
               value="categories"
               className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
             >
-              Categorieën ({categories.length})
+              {'Categorieën (' + categories.length + ')'}
             </TabsTrigger>
             <TabsTrigger
               value="locations"
               className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
             >
-              Locaties ({locations.length})
+              {'Locaties (' + locations.length + ')'}
             </TabsTrigger>
             <TabsTrigger
               value="purposes"
               className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
             >
-              Doelen ({purposes.length})
+              {'Doelen (' + purposes.length + ')'}
             </TabsTrigger>
             <TabsTrigger
               value="statistics"
@@ -1186,7 +1186,7 @@ export default function ProductRegistrationApp() {
                           <SelectContent>
                             {products.map((product) => (
                               <SelectItem key={product.id} value={product.name}>
-                                {product.name} {product.qrcode && `(${product.qrcode})`}
+                                {product.name + (product.qrcode ? ' (' + product.qrcode + ')' : '')}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1203,7 +1203,7 @@ export default function ProductRegistrationApp() {
                           📱 Scan QR
                         </Button>
                       </div>
-                      {qrScanResult && <p className="text-sm text-green-600">✅ QR Code gescand: {qrScanResult}</p>}
+                      {qrScanResult && <p className="text-sm text-green-600">{'✅ QR Code gescand: ' + qrScanResult}</p>}
                     </div>
 
                     <div className="space-y-2">
@@ -1991,7 +1991,7 @@ export default function ProductRegistrationApp() {
                         <TableBody>
                           {stats.recentActivity.map((entry) => (
                             <TableRow key={entry.id}>
-                              <TableCell>{entry.date} {entry.time}</TableCell>
+                              <TableCell>{entry.date + ' ' + entry.time}</TableCell>
                               <TableCell>{entry.user}</TableCell>
                               <TableCell>{entry.product}</TableCell>
                               <TableCell>{entry.location}</TableCell>
