@@ -1681,7 +1681,7 @@ export default function ProductRegistrationApp() {
                                       size="sm"
                                       variant="outline"
                                       onClick={() => openAttachment(product)}
-                                      className="h-8 px-2 text-xs"
+                                      className="h-8 px-2 text-xs bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800"
                                       title={`Open ${product.attachmentName}`}
                                     >
                                       <FileText className="h-3 w-3 mr-1" />
@@ -1691,7 +1691,7 @@ export default function ProductRegistrationApp() {
                                       size="sm"
                                       variant="ghost"
                                       onClick={() => removeAttachment(product)}
-                                      className="h-8 px-2 text-xs text-red-600 hover:text-red-700"
+                                      className="h-8 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
                                       title="Verwijder bijlage"
                                     >
                                       <X className="h-3 w-3" />
