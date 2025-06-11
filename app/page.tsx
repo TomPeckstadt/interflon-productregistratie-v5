@@ -173,6 +173,9 @@ export default function ProductRegistrationApp() {
   const [showProductDropdown, setShowProductDropdown] = useState(false)
   const productSelectorRef = useRef<HTMLDivElement>(null)
 
+  // New state for user search
+  const [userSearchQuery, setUserSearchQuery] = useState("")
+
   useEffect(() => {
     const savedUsers = localStorage.getItem("interflon-users")
     const savedProducts = localStorage.getItem("interflon-products")
@@ -823,6 +826,13 @@ export default function ProductRegistrationApp() {
 
   const stats = calculateStatistics()
 
+  // Function to get filtered and sorted users
+  const getFilteredAndSortedUsers = () => {
+    return users
+      .filter((user) => user.toLowerCase().includes(userSearchQuery.toLowerCase()))
+      .sort((a, b) => a.localeCompare(b, "nl", { sensitivity: "base" }))
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -1316,6 +1326,39 @@ export default function ProductRegistrationApp() {
                     </Button>
                   </div>
 
+                  {/* Zoekveld voor gebruikers */}
+                  <div className="space-y-2">
+                    <Label htmlFor="user-search" className="text-sm font-medium">
+                      Zoek gebruiker
+                    </Label>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                      <Input
+                        id="user-search"
+                        type="text"
+                        placeholder="Zoek op naam..."
+                        value={userSearchQuery}
+                        onChange={(e) => setUserSearchQuery(e.target.value)}
+                        className="pl-8"
+                      />
+                      {userSearchQuery && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-1 top-1 h-6 w-6 p-0"
+                          onClick={() => setUserSearchQuery("")}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-sm text-gray-600 mb-2">
+                    {getFilteredAndSortedUsers().length} van {users.length} gebruikers
+                    {userSearchQuery && ` (gefilterd op "${userSearchQuery}")`}
+                  </div>
+
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1324,32 +1367,42 @@ export default function ProductRegistrationApp() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.map((user) => (
-                        <TableRow key={user}>
-                          <TableCell>{user}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              size="icon"
-                              onClick={() => {
-                                setEditingUser(user)
-                                setNewUserName(user)
-                                setShowEditUserDialog(true)
-                              }}
-                              className="bg-orange-600 hover:bg-orange-700 text-white"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => removeUser(user)}
-                              className="bg-red-500 hover:bg-red-600"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                      {getFilteredAndSortedUsers().length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center py-8 text-gray-500">
+                            {userSearchQuery
+                              ? `Geen gebruikers gevonden voor "${userSearchQuery}"`
+                              : "Geen gebruikers beschikbaar"}
                           </TableCell>
                         </TableRow>
-                      ))}
+                      ) : (
+                        getFilteredAndSortedUsers().map((user) => (
+                          <TableRow key={user}>
+                            <TableCell>{user}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="icon"
+                                onClick={() => {
+                                  setEditingUser(user)
+                                  setNewUserName(user)
+                                  setShowEditUserDialog(true)
+                                }}
+                                className="bg-orange-600 hover:bg-orange-700 text-white mr-2"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="icon"
+                                onClick={() => removeUser(user)}
+                                className="bg-red-500 hover:bg-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                   </Table>
                 </div>
