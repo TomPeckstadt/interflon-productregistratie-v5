@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Download, Plus, Trash2, Edit, Search, X, QrCode } from "lucide-react"
+import { Download, Plus, Trash2, Edit, Search, X, QrCode, ChevronDown } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -54,10 +54,6 @@ const pieChartLabelStyle = {
   fontWeight: "bold",
   fill: "#2d3748",
 }
-
-// Verwijder de import van jsQR
-// Verwijder deze regel:
-// import jsQR from "jsqr"
 
 export default function ProductRegistrationApp() {
   // Basic state
@@ -171,8 +167,11 @@ export default function ProductRegistrationApp() {
   const locationFileInputRef = useRef<HTMLInputElement>(null)
   const purposeFileInputRef = useRef<HTMLInputElement>(null)
 
-  // Load data from localStorage on mount
+  // Product selector states
   const [selectedCategory, setSelectedCategory] = useState("all")
+  const [productSearchQuery, setProductSearchQuery] = useState("")
+  const [showProductDropdown, setShowProductDropdown] = useState(false)
+  const productSelectorRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const savedUsers = localStorage.getItem("interflon-users")
@@ -192,6 +191,20 @@ export default function ProductRegistrationApp() {
     // Set default user
     if (users.length > 0 && !currentUser) {
       setCurrentUser(users[0])
+    }
+  }, [])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (productSelectorRef.current && !productSelectorRef.current.contains(event.target as Node)) {
+        setShowProductDropdown(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
     }
   }, [])
 
@@ -248,6 +261,7 @@ export default function ProductRegistrationApp() {
 
       // Reset form
       setSelectedProduct("")
+      setProductSearchQuery("")
       setSelectedCategory("all")
       setLocation("")
       setPurpose("")
@@ -279,6 +293,7 @@ export default function ProductRegistrationApp() {
 
       if (foundProduct) {
         setSelectedProduct(foundProduct.name)
+        setProductSearchQuery(foundProduct.name)
         // Automatisch de categorie selecteren als het product een categorie heeft
         if (foundProduct.categoryId) {
           setSelectedCategory(foundProduct.categoryId)
@@ -298,11 +313,22 @@ export default function ProductRegistrationApp() {
     stopQrScanner()
   }
 
-  const scanQrCode = () => {
-    const qrInput = prompt("Voer QR code in:")
-    if (qrInput && qrInput.trim()) {
-      handleQrCodeDetected(qrInput.trim())
-    }
+  // Get filtered products for dropdown
+  const getFilteredProducts = () => {
+    return products
+      .filter((product) => selectedCategory === "all" || product.categoryId === selectedCategory)
+      .filter(
+        (product) =>
+          product.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+          (product.qrcode && product.qrcode.toLowerCase().includes(productSearchQuery.toLowerCase())),
+      )
+  }
+
+  // Handle product selection
+  const handleProductSelect = (product: Product) => {
+    setSelectedProduct(product.name)
+    setProductSearchQuery(product.name)
+    setShowProductDropdown(false)
   }
 
   // File import functions
@@ -948,22 +974,47 @@ export default function ProductRegistrationApp() {
                     <div className="space-y-2">
                       <Label className="text-sm sm:text-base font-medium">📦 Product</Label>
                       <div className="flex gap-2">
-                        <Select value={selectedProduct} onValueChange={setSelectedProduct} required>
-                          <SelectTrigger className="h-10 sm:h-12 flex-1">
-                            <SelectValue placeholder="Selecteer een product" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {products
-                              .filter(
-                                (product) => selectedCategory === "all" || product.categoryId === selectedCategory,
-                              )
-                              .map((product) => (
-                                <SelectItem key={product.id} value={product.name}>
-                                  {product.name} {product.qrcode && `(${product.qrcode})`}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="relative flex-1" ref={productSelectorRef}>
+                          <div className="relative">
+                            <Input
+                              type="text"
+                              placeholder="Zoek product..."
+                              value={productSearchQuery}
+                              onChange={(e) => {
+                                setProductSearchQuery(e.target.value)
+                                setShowProductDropdown(true)
+                              }}
+                              onFocus={() => setShowProductDropdown(true)}
+                              className="h-10 sm:h-12 pr-8"
+                              required
+                            />
+                            <ChevronDown
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer"
+                              onClick={() => setShowProductDropdown(!showProductDropdown)}
+                            />
+                          </div>
+
+                          {showProductDropdown && (
+                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                              {getFilteredProducts().length === 0 ? (
+                                <div className="px-3 py-2 text-sm text-gray-500">Geen producten gevonden</div>
+                              ) : (
+                                getFilteredProducts().map((product) => (
+                                  <div
+                                    key={product.id}
+                                    className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+                                    onClick={() => handleProductSelect(product)}
+                                  >
+                                    <div className="font-medium">{product.name}</div>
+                                    {product.qrcode && (
+                                      <div className="text-xs text-gray-500">QR: {product.qrcode}</div>
+                                    )}
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
                         <Button
                           type="button"
                           onClick={() => {
@@ -2064,8 +2115,7 @@ export default function ProductRegistrationApp() {
         </Dialog>
       </div>
 
-      {/* Vervang ook de showQrScanner implementatie met een eenvoudige dialoog */}
-      {/* Vervang de showQrScanner code (net boven de QrScanner component) met: */}
+      {/* QR Scanner Dialog */}
       {showQrScanner && (
         <Dialog open={showQrScanner} onOpenChange={setShowQrScanner}>
           <DialogContent>
@@ -2088,9 +2138,7 @@ export default function ProductRegistrationApp() {
   )
 }
 
-// Vervang de QrScanner component met een eenvoudige dialoog
-// Vervang de hele QrScanner component (onderaan het bestand) met deze versie:
-
+// QR Scanner Component
 interface QrScannerProps {
   onResult: (result: string) => void
   onError: (error: any) => void
