@@ -798,8 +798,17 @@ export default function ProductRegistrationApp() {
           <div className="flex flex-col lg:flex-row items-center justify-between gap-4 sm:gap-6">
             <div className="flex flex-col lg:flex-row items-center gap-6">
               <div className="flex-shrink-0">
-                <div className="flex items-center bg-white p-4 rounded-lg shadow-sm border">
-                  <img src="/images/dematic-logo.png" alt="DEMATIC Logo" className="h-12 w-auto" />
+                <div
+                  className="flex items-center bg-white p-4 rounded-lg shadow-sm border"
+                  style={{ minWidth: "200px", height: "80px", position: "relative" }}
+                >
+                  <div className="w-1 h-12 bg-amber-500 absolute left-4"></div>
+                  <div
+                    className="text-2xl font-bold text-gray-800 tracking-wide absolute"
+                    style={{ bottom: "16px", left: "32px" }}
+                  >
+                    DEMATIC
+                  </div>
                 </div>
               </div>
 
