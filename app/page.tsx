@@ -1818,10 +1818,16 @@ export default function ProductRegistrationApp() {
                               })}
                             </Pie>
                             <Tooltip
-                              formatter={(value, name) => [`Aantal: ${value}`, name]}
-                              labelFormatter={() => ""}
-                              contentStyle={{ padding: "8px", borderRadius: "4px", border: "none" }}
-                              itemStyle={{ color: "#333" }}
+                              formatter={(value, name) => [`${value}`, `${name}`]}
+                              labelFormatter={(label) => (label ? `Product: ${label}` : "")}
+                              contentStyle={{
+                                padding: "8px",
+                                borderRadius: "4px",
+                                border: "1px solid #e2e8f0",
+                                backgroundColor: "white",
+                                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                              }}
+                              itemStyle={{ color: "#333", fontWeight: "500" }}
                             />
                           </PieChart>
                         </ResponsiveContainer>
