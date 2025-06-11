@@ -773,7 +773,7 @@ export default function ProductRegistrationApp() {
     const pieChartData = Object.entries(productCounts)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
-      .slice(0, 8)
+      .slice(0, 5) // Wijzig van 8 naar 5 voor top 5
 
     return {
       totalRegistrations,
@@ -1792,7 +1792,7 @@ export default function ProductRegistrationApp() {
                     {/* Product Verdeling Taartdiagram */}
                     <Card className="shadow-sm">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Product Verdeling</CardTitle>
+                        <CardTitle className="text-lg">Top 5 Producten</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <ResponsiveContainer width="100%" height={280}>
@@ -1803,29 +1803,9 @@ export default function ProductRegistrationApp() {
                               nameKey="name"
                               cx="50%"
                               cy="50%"
-                              outerRadius={80}
+                              outerRadius={60}
                               fill="#8884d8"
-                              label={({ name, value, cx, cy, midAngle, innerRadius, outerRadius }) => {
-                                const RADIAN = Math.PI / 180
-                                const radius = innerRadius + (outerRadius - innerRadius) * 0.5
-                                const x = cx + radius * Math.cos(-midAngle * RADIAN)
-                                const y = cy + radius * Math.sin(-midAngle * RADIAN)
-
-                                return (
-                                  <text
-                                    x={x}
-                                    y={y}
-                                    fill="#2d3748"
-                                    textAnchor={x > cx ? "start" : "end"}
-                                    dominantBaseline="central"
-                                    fontSize="11"
-                                    fontWeight="bold"
-                                  >
-                                    {`${name}: ${value}`}
-                                  </text>
-                                )
-                              }}
-                              labelLine={false}
+                              label={false} // Verwijder de labels op de diagram zelf
                             >
                               {stats.pieChartData.map((entry, index) => {
                                 const pastelColors = [
@@ -1834,9 +1814,6 @@ export default function ProductRegistrationApp() {
                                   "#BAE1FF", // Light Blue
                                   "#FFFFBA", // Light Yellow
                                   "#FFDFBA", // Light Orange
-                                  "#E0BBE4", // Light Purple
-                                  "#FFC9DE", // Light Rose
-                                  "#C7CEEA", // Light Lavender
                                 ]
                                 return <Cell key={`cell-${index}`} fill={pastelColors[index % pastelColors.length]} />
                               })}
@@ -1853,6 +1830,30 @@ export default function ProductRegistrationApp() {
                             />
                           </PieChart>
                         </ResponsiveContainer>
+                        {/* Legend onder de taartdiagram */}
+                        <div className="mt-4 space-y-2">
+                          {stats.pieChartData.map((entry, index) => {
+                            const pastelColors = [
+                              "#FFB3BA", // Light Pink
+                              "#BAFFC9", // Light Green
+                              "#BAE1FF", // Light Blue
+                              "#FFFFBA", // Light Yellow
+                              "#FFDFBA", // Light Orange
+                            ]
+                            return (
+                              <div key={entry.name} className="flex items-center gap-2 text-xs">
+                                <div
+                                  className="w-3 h-3 rounded-sm flex-shrink-0"
+                                  style={{ backgroundColor: pastelColors[index % pastelColors.length] }}
+                                />
+                                <span className="truncate flex-1" title={entry.name}>
+                                  {entry.name}
+                                </span>
+                                <span className="font-medium text-gray-600">{entry.value}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </CardContent>
                     </Card>
                   </div>
