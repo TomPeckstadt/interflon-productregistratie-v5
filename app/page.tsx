@@ -1232,18 +1232,22 @@ export default function ProductRegistrationApp() {
                           <TableCell>{user}</TableCell>
                           <TableCell className="text-right">
                             <Button
-                              variant="ghost"
                               size="icon"
                               onClick={() => {
                                 setEditingUser(user)
                                 setNewUserName(user)
                                 setShowEditUserDialog(true)
                               }}
-                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                              className="bg-orange-600 hover:bg-orange-700 text-white"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="destructive" size="icon" onClick={() => removeUser(user)}>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => removeUser(user)}
+                              className="bg-red-500 hover:bg-red-600"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -1368,17 +1372,21 @@ export default function ProductRegistrationApp() {
                           </TableCell>
                           <TableCell className="text-right">
                             <Button
-                              variant="ghost"
                               size="icon"
                               onClick={() => {
                                 setEditingProduct(product)
                                 setShowEditDialog(true)
                               }}
-                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                              className="bg-orange-600 hover:bg-orange-700 text-white"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="destructive" size="icon" onClick={() => removeProduct(product)}>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => removeProduct(product)}
+                              className="bg-red-500 hover:bg-red-600"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -1424,17 +1432,21 @@ export default function ProductRegistrationApp() {
                           <TableCell>{category.name}</TableCell>
                           <TableCell className="text-right">
                             <Button
-                              variant="ghost"
                               size="icon"
                               onClick={() => {
                                 setEditingCategory(category)
                                 setShowEditCategoryDialog(true)
                               }}
-                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                              className="bg-orange-600 hover:bg-orange-700 text-white"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="destructive" size="icon" onClick={() => removeCategory(category)}>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => removeCategory(category)}
+                              className="bg-red-500 hover:bg-red-600"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -1504,18 +1516,22 @@ export default function ProductRegistrationApp() {
                           <TableCell>{location}</TableCell>
                           <TableCell className="text-right">
                             <Button
-                              variant="ghost"
                               size="icon"
                               onClick={() => {
                                 setEditingLocation(location)
                                 setNewLocationName(location)
                                 setShowEditLocationDialog(true)
                               }}
-                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                              className="bg-orange-600 hover:bg-orange-700 text-white"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="destructive" size="icon" onClick={() => removeLocation(location)}>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => removeLocation(location)}
+                              className="bg-red-500 hover:bg-red-600"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -1585,18 +1601,22 @@ export default function ProductRegistrationApp() {
                           <TableCell>{purpose}</TableCell>
                           <TableCell className="text-right">
                             <Button
-                              variant="ghost"
                               size="icon"
                               onClick={() => {
                                 setEditingPurpose(purpose)
                                 setNewPurposeName(purpose)
                                 setShowEditPurposeDialog(true)
                               }}
-                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                              className="bg-orange-600 hover:bg-orange-700 text-white"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="destructive" size="icon" onClick={() => removePurpose(purpose)}>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => removePurpose(purpose)}
+                              className="bg-red-500 hover:bg-red-600"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
