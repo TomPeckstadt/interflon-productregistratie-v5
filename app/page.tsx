@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js"
-
+import { useAuth, LoginForm } from "@/lib/auth-components"
+import type { User } from "@/lib/auth"
 // Debug functie voor logging
 function debugLog(message: string, data?: any) {
   console.log(`[DEBUG ${new Date().toISOString()}] ${message}`, data || "")
