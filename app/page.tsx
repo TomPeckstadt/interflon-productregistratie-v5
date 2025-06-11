@@ -1,742 +1,745 @@
+"use client"
+
+import { useState, useEffect, useRef } from "react"
+import type React from "react"
+import {
+  fetchProducts,
+  saveProduct,
+  updateProduct as updateProductInDB,
+  deleteProduct,
+  fetchUsers,
+  saveUser,
+  deleteUser,
+  fetchLocations,
+  saveLocation,
+  deleteLocation,
+  fetchPurposes,
+  savePurpose,
+  deletePurpose,
+  fetchRegistrations,
+  saveRegistration,
+  subscribeToProducts,
+  subscribeToUsers,
+  subscribeToLocations,
+  subscribeToPurposes,
+  subscribeToRegistrations,
+  fetchCategories,
+  saveCategory,
+  deleteCategory,
+  type Category,
+  type Product,
+  type RegistrationEntry,
+  testSupabaseConnection,
+} from "@/lib/supabase"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Download, Search, X, Plus, Trash2, Edit } from 'lucide-react'
+
+// Voeg deze imports toe voor de charts
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
+
+// Import the real auth functions
 import { useAuth, LoginForm } from "@/lib/auth-components"
 import type { User } from "@/lib/auth"
-// Debug functie voor logging
-function debugLog(message: string, data?: any) {
-  console.log(`[DEBUG ${new Date().toISOString()}] ${message}`, data || "")
-}
+import { signOut } from "next-auth/react"
 
-// Supabase client voor client-side gebruik (singleton pattern)
-let supabaseClient: ReturnType<typeof createClient> | null = null
+export default function ProductRegistrationApp() {
+  const { user, loading } = useAuth()
 
-export const getSupabaseClient = () => {
-  if (!supabaseClient) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const [currentUser, setCurrentUser] = useState("")
+  const [selectedProduct, setSelectedProduct] = useState("")
+  const [location, setLocation] = useState("")
+  const [purpose, setPurpose] = useState("")
+  const [entries, setEntries] = useState<RegistrationEntry[]>([])
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
-    console.log("Supabase configuratie:", {
-      url: supabaseUrl ? "Aanwezig" : "Ontbreekt",
-      key: supabaseAnonKey ? "Aanwezig" : "Ontbreekt",
-    })
+  // Beheer states
+  const [users, setUsers] = useState<string[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [locations, setLocations] = useState<string[]>([])
+  const [purposes, setPurposes] = useState<string[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error("Supabase URL of Anon Key ontbreekt. Controleer je omgevingsvariabelen.")
-      // Return een dummy client die geen echte operaties uitvoert maar ook geen errors gooit
-      return {
-        from: () => ({
-          select: () => ({ data: [], error: new Error("Supabase niet geconfigureerd") }),
-          insert: () => ({ data: null, error: new Error("Supabase niet geconfigureerd") }),
-          delete: () => ({ error: new Error("Supabase niet geconfigureerd") }),
-        }),
-        channel: () => ({
-          on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) }),
-        }),
-      } as any
+  // Nieuwe item states
+  const [newUserName, setNewUserName] = useState("")
+  const [newProductName, setNewProductName] = useState("")
+  const [newProductQrCode, setNewProductQrCode] = useState("")
+  const [newProductCategory, setNewProductCategory] = useState("none")
+  const [newLocationName, setNewLocationName] = useState("")
+  const [newPurposeName, setNewPurposeName] = useState("")
+  const [newCategoryName, setNewCategoryName] = useState("")
+
+  // QR Scanner states
+  const [showQrScanner, setShowQrScanner] = useState(false)
+  const [qrScanResult, setQrScanResult] = useState("")
+  const [qrScanMode, setQrScanMode] = useState<"registration" | "product-management">("registration")
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const [isScanning, setIsScanning] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const scanIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Import states
+  const [importMessage, setImportMessage] = useState("")
+  const [importError, setImportError] = useState("")
+  const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "error">("connecting")
+  const userFileInputRef = useRef<HTMLInputElement>(null)
+  const productFileInputRef = useRef<HTMLInputElement>(null)
+  const locationFileInputRef = useRef<HTMLInputElement>(null)
+  const purposeFileInputRef = useRef<HTMLInputElement>(null)
+
+  // Filter en zoek states
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filterUser, setFilterUser] = useState("all")
+  const [filterProduct, setFilterProduct] = useState("")
+  const [filterLocation, setFilterLocation] = useState("all")
+  const [filterDateFrom, setFilterDateFrom] = useState("")
+  const [filterDateTo, setFilterDateTo] = useState("")
+  const [sortBy, setSortBy] = useState<"date" | "user" | "product">("date")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [showEditCategoryDialog, setShowEditCategoryDialog] = useState(false)
+
+  // Laad alle data bij start
+  useEffect(() => {
+    if (user) {
+      loadAllData()
+      setupRealtimeSubscriptions()
     }
+  }, [user])
+
+  // Cleanup camera stream when component unmounts
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop())
+      }
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current)
+      }
+    }
+  }, [cameraStream])
+
+  const loadAllData = async () => {
+    try {
+      setConnectionStatus("connecting")
+      
+      // Test connectie eerst
+      const connectionTest = await testSupabaseConnection()
+      console.log("Connection test result:", connectionTest)
+      
+      if (!connectionTest.auth && !connectionTest.database) {
+        console.log("No Supabase connection, using mock data only")
+        setConnectionStatus("error")
+        setImportError("⚠️ Geen database verbinding - gebruikt lokale data")
+        return
+      }
+
+      const [usersResult, productsResult, categoriesResult, locationsResult, purposesResult, registrationsResult] =
+        await Promise.all([
+          fetchUsers(),
+          fetchProducts(),
+          fetchCategories(),
+          fetchLocations(),
+          fetchPurposes(),
+          fetchRegistrations(),
+        ])
+
+      if (usersResult.data) {
+        setUsers(usersResult.data)
+        if (usersResult.data.length > 0 && !currentUser) {
+          setCurrentUser(usersResult.data[0])
+        }
+      }
+
+      if (productsResult.data) setProducts(productsResult.data)
+      if (locationsResult.data) setLocations(locationsResult.data)
+      if (purposesResult.data) setPurposes(purposesResult.data)
+      if (categoriesResult.data) setCategories(categoriesResult.data)
+      if (registrationsResult.data) setEntries(registrationsResult.data)
+
+      setConnectionStatus("connected")
+      setImportMessage("✅ Verbonden met database - alle data gesynchroniseerd!")
+      setTimeout(() => setImportMessage(""), 3000)
+    } catch (error) {
+      console.error("Error loading data:", error)
+      setConnectionStatus("error")
+      setImportError(`❌ Fout bij verbinden met database: ${error instanceof Error ? error.message : "Onbekende fout"}`)
+    }
+  }
+
+  const setupRealtimeSubscriptions = () => {
+    console.log("Setting up realtime subscriptions...")
 
     try {
-      console.log("Supabase client wordt geïnitialiseerd...")
-      supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
-      console.log("Supabase client succesvol geïnitialiseerd")
+      const unsubscribeProducts = subscribeToProducts((updatedProducts) => {
+        console.log("Products subscription update received:", updatedProducts.length)
+        setProducts(updatedProducts)
+      })
+
+      const unsubscribeUsers = subscribeToUsers((updatedUsers) => {
+        console.log("Users subscription update received:", updatedUsers.length)
+        setUsers(updatedUsers)
+      })
+
+      const unsubscribeLocations = subscribeToLocations((updatedLocations) => {
+        console.log("Locations subscription update received:", updatedLocations.length)
+        setLocations(updatedLocations)
+      })
+
+      const unsubscribePurposes = subscribeToPurposes((updatedPurposes) => {
+        console.log("Purposes subscription update received:", updatedPurposes.length)
+        setPurposes(updatedPurposes)
+      })
+
+      const unsubscribeRegistrations = subscribeToRegistrations((updatedRegistrations) => {
+        console.log("Registrations subscription update received:", updatedRegistrations.length)
+        setEntries(updatedRegistrations)
+      })
+
+      console.log("All realtime subscriptions set up successfully")
+
+      return () => {
+        console.log("Cleaning up subscriptions...")
+        if (unsubscribeProducts) unsubscribeProducts.unsubscribe()
+        if (unsubscribeUsers) unsubscribeUsers.unsubscribe()
+        if (unsubscribeLocations) unsubscribeLocations.unsubscribe()
+        if (unsubscribePurposes) unsubscribePurposes.unsubscribe()
+        if (unsubscribeRegistrations) unsubscribeRegistrations.unsubscribe()
+      }
     } catch (error) {
-      console.error("Fout bij initialiseren Supabase client:", error)
-      return {
-        from: () => ({
-          select: () => ({ data: [], error: new Error("Supabase initialisatie mislukt") }),
-          insert: () => ({ data: null, error: new Error("Supabase initialisatie mislukt") }),
-          delete: () => ({ error: new Error("Supabase initialisatie mislukt") }),
-        }),
-        channel: () => ({
-          on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) }),
-        }),
-      } as any
+      console.error("Error setting up realtime subscriptions:", error)
+      setImportError("Fout bij het opzetten van realtime updates. Vernieuw de pagina om het opnieuw te proberen.")
+      return () => {}
     }
   }
-  return supabaseClient
-}
 
-// Supabase client voor server-side gebruik
-export const createServerSupabaseClient = () => {
-  return createClient(
-    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-  )
-}
+  // Eenvoudige QR code detectie functie
+  const detectQRCode = () => {
+    if (!videoRef.current || !canvasRef.current) return
 
-// Type definities
-export interface Product {
-  id?: string
-  name: string
-  qrcode: string
-  categoryId?: string
-}
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    const context = canvas.getContext("2d")
 
-export interface Category {
-  id: string
-  name: string
-}
+    if (!context || video.videoWidth === 0 || video.videoHeight === 0) return
 
-export interface RegistrationEntry {
-  id?: string
-  user: string
-  product: string
-  location: string
-  purpose: string
-  timestamp: string
-  date: string
-  time: string
-  qrcode?: string
-  created_at?: string
-}
+    // Set canvas size to match video
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
 
-// Mock data voor fallback
-const mockCategories: Category[] = [
-  { id: "1", name: "Smeermiddelen" },
-  { id: "2", name: "Reinigers" },
-  { id: "3", name: "Onderhoud" },
-]
+    // Draw current video frame to canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-const mockUsers: string[] = ["Jan Janssen", "Marie Pietersen", "Piet de Vries", "Anna van der Berg", "Tom Bakker"]
+    // Get image data
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
 
-const mockLocations: string[] = ["Kantoor 1.1", "Kantoor 1.2", "Vergaderzaal A", "Warehouse", "Thuis"]
+    // Hier zou normaal een QR code library gebruikt worden
+    // Voor nu simuleren we QR code detectie door te kijken naar donkere pixels
+    // Dit is een zeer eenvoudige implementatie
 
-const mockPurposes: string[] = ["Presentatie", "Thuiswerken", "Reparatie", "Training", "Demonstratie"]
+    // In een echte implementatie zou je een library zoals jsQR gebruiken:
+    // const code = jsQR(imageData.data, imageData.width, imageData.height)
+    // if (code) {
+    //   handleQrCodeDetected(code.data)
+    // }
+  }
 
-// ===== PRODUCT FUNCTIONALITEIT =====
-export async function fetchProducts() {
-  try {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false })
+  const startQrScanner = async () => {
+    try {
+      console.log("Starting QR scanner...")
 
-    if (error) {
-      // Check if it's a "relation does not exist" error
-      if (
-        error.message.includes('relation "public.products" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Products table does not exist, using mock data")
-        return { data: [], error: null }
+      // Toon eerst de modal
+      setShowQrScanner(true)
+      setIsScanning(true)
+
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.log("Camera not supported, showing manual input")
+        setIsScanning(false)
+        return
       }
-      console.error("Error fetching products:", error)
-      return { data: [], error: null }
+
+      // Request camera access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment",
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
+      })
+
+      console.log("Camera stream obtained:", stream)
+      setCameraStream(stream)
+
+      // Wait for video element to be available
+      setTimeout(() => {
+        if (videoRef.current && stream) {
+          console.log("Setting video source...")
+          videoRef.current.srcObject = stream
+          videoRef.current
+            .play()
+            .then(() => {
+              // Start scanning for QR codes
+              scanIntervalRef.current = setInterval(detectQRCode, 500) // Scan every 500ms
+            })
+            .catch(console.error)
+        }
+      }, 100)
+    } catch (error) {
+      console.error("Camera error:", error)
+      setIsScanning(false)
+      // Modal is already open, just show manual input option
     }
-
-    return { data: data || [], error: null }
-  } catch (error) {
-    console.log("Unexpected error fetching products:", error)
-    return { data: [], error: null }
   }
-}
 
-export async function saveProduct(product: Product) {
-  try {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase.from("products").insert([product]).select()
+  const stopQrScanner = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop())
+      setCameraStream(null)
+    }
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current)
+      scanIntervalRef.current = null
+    }
+    setShowQrScanner(false)
+    setIsScanning(false)
+  }
 
-    if (error) {
-      if (
-        error.message.includes('relation "public.products" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Products table does not exist, cannot save to database")
-        return { data: null, error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
+  const scanQrCode = () => {
+    const qrInput = prompt("Voer QR code in:")
+    if (qrInput && qrInput.trim()) {
+      handleQrCodeDetected(qrInput.trim())
+    }
+  }
+
+  const handleQrCodeDetected = (qrCode: string) => {
+    console.log("QR Code detected:", qrCode)
+    setQrScanResult(qrCode)
+
+    if (qrScanMode === "registration") {
+      const foundProduct = products.find((p) => p.qrcode === qrCode)
+
+      if (foundProduct) {
+        setSelectedProduct(foundProduct.name)
+        setImportMessage(`✅ Product gevonden: ${foundProduct.name}`)
+        setTimeout(() => setImportMessage(""), 3000)
+      } else {
+        setImportError(`❌ Geen product gevonden voor QR code: ${qrCode}`)
+        setTimeout(() => setImportError(""), 3000)
       }
-      console.error("Error saving product:", error)
-      return { data: null, error }
+    } else if (qrScanMode === "product-management") {
+      setNewProductQrCode(qrCode)
+      setImportMessage(`✅ QR code gescand: ${qrCode}`)
+      setTimeout(() => setImportMessage(""), 3000)
     }
 
-    return { data: data?.[0] || null, error: null }
-  } catch (error) {
-    console.log("Unexpected error saving product:", error)
-    return { data: null, error: { message: "Unexpected error", code: "UNEXPECTED_ERROR" } }
+    stopQrScanner()
   }
-}
 
-export async function deleteProduct(id: string) {
-  debugLog("deleteProduct aangeroepen met ID:", id)
-  const supabase = getSupabaseClient()
+  const handleFileImport = async (file: File, type: "users" | "products" | "locations" | "purposes") => {
+    try {
+      setImportError("")
+      setImportMessage("Bestand wordt verwerkt...")
 
-  try {
-    const { error } = await supabase.from("products").delete().eq("id", id)
+      const text = await file.text()
+      let items: string[] = []
 
-    if (error) {
-      console.error("Error deleting product:", error)
-      return { success: false, error }
-    }
+      if (file.name.endsWith(".csv")) {
+        const lines = text.split("\n").filter((line) => line.trim())
 
-    debugLog("Product succesvol verwijderd met ID:", id)
-    return { success: true, error: null }
-  } catch (error) {
-    console.error("Onverwachte fout bij verwijderen product:", error)
-    return { success: false, error }
-  }
-}
+        if (type === "products") {
+          const newProducts: Product[] = []
+          lines.forEach((line) => {
+            const [name, qrcode] = line.split(",").map((item) => item.replace(/"/g, "").trim())
+            if (name && qrcode) {
+              newProducts.push({ name, qrcode })
+            }
+          })
 
-// ===== GEBRUIKERS FUNCTIONALITEIT =====
-export async function fetchUsers() {
-  try {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase.from("users").select("*").order("created_at", { ascending: false })
-
-    if (error) {
-      // Check if it's a "relation does not exist" error
-      if (
-        error.message.includes('relation "public.users" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Users table does not exist, using mock data")
-        return { data: mockUsers, error: null }
+          if (newProducts.length > 0) {
+            for (const product of newProducts) {
+              await saveProduct(product)
+            }
+            setImportMessage(`✅ ${newProducts.length} nieuwe producten geïmporteerd!`)
+            setTimeout(() => setImportMessage(""), 5000)
+          }
+          return
+        } else {
+          items = lines
+            .map((line) => line.split(",")[0].replace(/"/g, "").trim())
+            .filter((item) => item && item.length > 0)
+        }
+      } else {
+        items = text
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line && line.length > 0)
       }
-      console.error("Error fetching users:", error)
-      return { data: mockUsers, error: null }
+
+      if (items.length === 0) {
+        setImportError("Geen geldige items gevonden in het bestand")
+        return
+      }
+
+      let savedCount = 0
+      for (const item of items) {
+        try {
+          switch (type) {
+            case "users":
+              if (!users.includes(item)) {
+                await saveUser(item)
+                savedCount++
+              }
+              break
+            case "locations":
+              if (!locations.includes(item)) {
+                await saveLocation(item)
+                savedCount++
+              }
+              break
+            case "purposes":
+              if (!purposes.includes(item)) {
+                await savePurpose(item)
+                savedCount++
+              }
+              break
+          }
+        } catch (error) {
+          console.error(`Error saving ${item}:`, error)
+        }
+      }
+
+      setImportMessage(
+        `✅ ${savedCount} nieuwe ${type} geïmporteerd! (${items.length - savedCount} duplicaten overgeslagen)`,
+      )
+
+      if (type === "users" && userFileInputRef.current) userFileInputRef.current.value = ""
+      if (type === "products" && productFileInputRef.current) productFileInputRef.current.value = ""
+      if (type === "locations" && locationFileInputRef.current) locationFileInputRef.current.value = ""
+      if (type === "purposes" && purposeFileInputRef.current) purposeFileInputRef.current.value = ""
+
+      setTimeout(() => setImportMessage(""), 5000)
+    } catch (error) {
+      setImportError(`Fout bij importeren: ${error instanceof Error ? error.message : "Onbekende fout"}`)
+      setTimeout(() => setImportError(""), 5000)
+    }
+  }
+
+  const exportTemplate = (type: "users" | "products" | "locations" | "purposes") => {
+    let templateData: string[] = []
+    let filename = ""
+
+    switch (type) {
+      case "users":
+        templateData = ["Jan Janssen", "Marie Pietersen", "Piet de Vries", "Anna van der Berg", "Nieuwe Gebruiker"]
+        filename = "gebruikers-template.csv"
+        break
+      case "products":
+        templateData = [
+          "Laptop Dell XPS,DELL-XPS-001",
+          "Monitor Samsung 24,SAM-MON-002",
+          "Muis Logitech,LOG-MOU-003",
+          "Toetsenbord Mechanical,MECH-KEY-004",
+          "Nieuw Product,NEW-PROD-005",
+        ]
+        filename = "producten-template.csv"
+        break
+      case "locations":
+        templateData = ["Kantoor 1.1", "Kantoor 1.2", "Vergaderzaal A", "Warehouse", "Thuis", "Nieuwe Locatie"]
+        filename = "locaties-template.csv"
+        break
+      case "purposes":
+        templateData = ["Presentatie", "Thuiswerken", "Reparatie", "Training", "Demonstratie", "Nieuw Doel"]
+        filename = "doelen-template.csv"
+        break
     }
 
-    return { data: data?.map((user) => user.name) || mockUsers, error: null }
-  } catch (error) {
-    console.log("Unexpected error fetching users:", error)
-    return { data: mockUsers, error: null }
+    const csvContent = templateData.join("\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", filename)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
-}
 
-export async function saveUser(name: string) {
-  debugLog("saveUser aangeroepen met:", name)
-  const supabase = getSupabaseClient()
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
 
-  try {
-    debugLog("Bezig met opslaan van gebruiker...")
-    const { data, error } = await supabase.from("users").insert([{ name }]).select()
-
-    if (error) {
-      if (
-        error.message.includes('relation "public.users" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Users table does not exist, cannot save to database")
-        return { data: null, error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
-      }
-      console.error("Database error bij opslaan gebruiker:", error)
-      return { data: null, error }
+    if (!currentUser || !selectedProduct || !location || !purpose) {
+      return
     }
 
-    debugLog("Gebruiker succesvol opgeslagen:", data)
-    return { data: data?.[0] || null, error: null }
-  } catch (error) {
-    console.error("Onverwachte fout bij opslaan gebruiker:", error)
-    return { data: null, error }
-  }
-}
+    setIsLoading(true)
 
-export async function deleteUser(name: string) {
-  console.log("deleteUser aangeroepen met:", name)
-  const supabase = getSupabaseClient()
+    try {
+      const now = new Date()
+      const productQrcode = products.find((p) => p.name === selectedProduct)?.qrcode || ""
 
-  try {
-    console.log("Bezig met verwijderen van gebruiker...")
-    const { error } = await supabase.from("users").delete().eq("name", name)
-
-    if (error) {
-      if (
-        error.message.includes('relation "public.users" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Users table does not exist, cannot delete from database")
-        return { success: false, error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
+      const newEntry: Omit<RegistrationEntry, "id" | "created_at"> = {
+        user: currentUser,
+        product: selectedProduct,
+        location,
+        purpose,
+        timestamp: now.toISOString(),
+        date: now.toLocaleDateString("nl-NL"),
+        time: now.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }),
+        qrcode: productQrcode,
       }
-      console.error("Database error bij verwijderen gebruiker:", error)
-      return { success: false, error }
-    }
 
-    console.log("Gebruiker succesvol verwijderd")
-    return { success: true, error: null }
-  } catch (error) {
-    console.error("Onverwachte fout bij verwijderen gebruiker:", error)
-    return { success: false, error }
-  }
-}
+      const result = await saveRegistration(newEntry)
 
-// ===== LOCATIES FUNCTIONALITEIT =====
-export async function fetchLocations() {
-  try {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase.from("locations").select("*").order("created_at", { ascending: false })
+      if (result.data) {
+        console.log("Registratie direct toevoegen aan lijst:", result.data)
+        setEntries((prevEntries) => [result.data, ...prevEntries])
 
-    if (error) {
-      // Check if it's a "relation does not exist" error
-      if (
-        error.message.includes('relation "public.locations" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Locations table does not exist, using mock data")
-        return { data: mockLocations, error: null }
+        setSelectedProduct("")
+        setLocation("")
+        setPurpose("")
+        setQrScanResult("")
+
+        setShowSuccess(true)
+        setTimeout(() => setShowSuccess(false), 3000)
+      } else {
+        setImportError("Fout bij opslaan registratie")
       }
-      console.error("Error fetching locations:", error)
-      return { data: mockLocations, error: null }
-    }
-
-    return { data: data?.map((location) => location.name) || mockLocations, error: null }
-  } catch (error) {
-    console.log("Unexpected error fetching locations:", error)
-    return { data: mockLocations, error: null }
-  }
-}
-
-export async function saveLocation(name: string) {
-  const supabase = getSupabaseClient()
-
-  try {
-    const { data, error } = await supabase.from("locations").insert([{ name }]).select()
-
-    if (error) {
-      if (
-        error.message.includes('relation "public.locations" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Locations table does not exist, cannot save to database")
-        return { data: null, error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
-      }
-      console.error("Error saving location:", error)
-      return { data: null, error }
-    }
-
-    return { data: data?.[0] || null, error: null }
-  } catch (error) {
-    console.log("Unexpected error saving location:", error)
-    return { data: null, error }
-  }
-}
-
-export async function deleteLocation(name: string) {
-  const supabase = getSupabaseClient()
-
-  try {
-    const { error } = await supabase.from("locations").delete().eq("name", name)
-
-    if (error) {
-      if (
-        error.message.includes('relation "public.locations" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Locations table does not exist, cannot delete from database")
-        return { success: false, error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
-      }
-      console.error("Error deleting location:", error)
-      return { success: false, error }
-    }
-
-    return { success: true, error: null }
-  } catch (error) {
-    console.log("Unexpected error deleting location:", error)
-    return { success: false, error }
-  }
-}
-
-// ===== DOELEN FUNCTIONALITEIT =====
-export async function fetchPurposes() {
-  try {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase.from("purposes").select("*").order("created_at", { ascending: false })
-
-    if (error) {
-      // Check if it's a "relation does not exist" error
-      if (
-        error.message.includes('relation "public.purposes" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Purposes table does not exist, using mock data")
-        return { data: mockPurposes, error: null }
-      }
-      console.error("Error fetching purposes:", error)
-      return { data: mockPurposes, error: null }
-    }
-
-    return { data: data?.map((purpose) => purpose.name) || mockPurposes, error: null }
-  } catch (error) {
-    console.log("Unexpected error fetching purposes:", error)
-    return { data: mockPurposes, error: null }
-  }
-}
-
-export async function savePurpose(name: string) {
-  const supabase = getSupabaseClient()
-
-  try {
-    const { data, error } = await supabase.from("purposes").insert([{ name }]).select()
-
-    if (error) {
-      if (
-        error.message.includes('relation "public.purposes" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Purposes table does not exist, cannot save to database")
-        return { data: null, error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
-      }
-      console.error("Error saving purpose:", error)
-      return { data: null, error }
-    }
-
-    return { data: data?.[0] || null, error: null }
-  } catch (error) {
-    console.log("Unexpected error saving purpose:", error)
-    return { data: null, error }
-  }
-}
-
-export async function deletePurpose(name: string) {
-  const supabase = getSupabaseClient()
-
-  try {
-    const { error } = await supabase.from("purposes").delete().eq("name", name)
-
-    if (error) {
-      if (
-        error.message.includes('relation "public.purposes" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Purposes table does not exist, cannot delete from database")
-        return { success: false, error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
-      }
-      console.error("Error deleting purpose:", error)
-      return { success: false, error }
-    }
-
-    return { success: true, error: null }
-  } catch (error) {
-    console.log("Unexpected error deleting purpose:", error)
-    return { success: false, error }
-  }
-}
-
-// ===== REGISTRATIES FUNCTIONALITEIT =====
-export async function fetchRegistrations() {
-  try {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase.from("registrations").select("*").order("created_at", { ascending: false })
-
-    if (error) {
-      // Check if it's a "relation does not exist" error
-      if (
-        error.message.includes('relation "public.registrations" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Registrations table does not exist, using empty data")
-        return { data: [], error: null }
-      }
-      console.error("Error fetching registrations:", error)
-      return { data: [], error: null }
-    }
-
-    return { data: data || [], error: null }
-  } catch (error) {
-    console.log("Unexpected error fetching registrations:", error)
-    return { data: [], error: null }
-  }
-}
-
-export async function saveRegistration(registration: Omit<RegistrationEntry, "id" | "created_at">) {
-  try {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase.from("registrations").insert([registration]).select()
-
-    if (error) {
-      if (
-        error.message.includes('relation "public.registrations" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Registrations table does not exist, cannot save to database")
-        return { data: null, error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
-      }
+    } catch (error) {
       console.error("Error saving registration:", error)
-      return { data: null, error }
+      setImportError("Fout bij opslaan registratie")
     }
 
-    return { data: data?.[0] || null, error: null }
-  } catch (error) {
-    console.log("Unexpected error saving registration:", error)
-    return { data: null, error: { message: "Unexpected error", code: "UNEXPECTED_ERROR" } }
+    setIsLoading(false)
   }
-}
 
-// ===== CATEGORIEËN FUNCTIONALITEIT =====
-export async function fetchCategories() {
-  try {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase.from("categories").select("*").order("name")
+  const exportToCSV = () => {
+    const filteredEntries = getFilteredAndSortedEntries()
+    const headers = ["Datum", "Tijd", "Gebruiker", "Product", "QR Code", "Locatie", "Doel"]
+    const csvContent = [
+      headers.join(","),
+      ...filteredEntries.map((entry) =>
+        [
+          entry.date,
+          entry.time,
+          `"${entry.user}"`,
+          `"${entry.product}"`,
+          `"${entry.qrcode || ""}"`,
+          `"${entry.location}"`,
+          `"${entry.purpose}"`,
+          `"${entry.purpose}"`,
+        ].join(","),
+      ),
+    ].join("\n")
 
-    if (error) {
-      // Check if it's a "relation does not exist" error
-      if (
-        error.message.includes('relation "public.categories" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Categories table does not exist, using mock data")
-        return { data: mockCategories, error: null }
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+
+    const filterSuffix =
+      searchQuery || filterUser !== "all" || filterProduct || filterLocation !== "all" ? "-gefilterd" : ""
+    link.setAttribute("download", `product-registraties${filterSuffix}-${new Date().toISOString().split("T")[0]}.csv`)
+
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const addNewUser = async () => {
+    if (newUserName.trim() && !users.includes(newUserName.trim())) {
+      try {
+        console.log("addNewUser functie aangeroepen voor:", newUserName.trim())
+        const result = await saveUser(newUserName.trim())
+
+        if (result.error) {
+          console.error("Fout bij toevoegen gebruiker:", result.error)
+          setImportError(`Fout bij toevoegen gebruiker: ${result.error.message || "Onbekende fout"}`)
+          setTimeout(() => setImportError(""), 5000)
+        } else {
+          if (result.data) {
+            console.log("Gebruiker direct toevoegen aan lijst:", result.data)
+            setUsers((prevUsers) => [...prevUsers, newUserName.trim()])
+          }
+
+          setNewUserName("")
+          setImportMessage("✅ Gebruiker toegevoegd!")
+          setTimeout(() => setImportMessage(""), 2000)
+        }
+      } catch (error) {
+        console.error("Onverwachte fout bij toevoegen gebruiker:", error)
+        setImportError(`Onverwachte fout: ${error instanceof Error ? error.message : "Onbekende fout"}`)
+        setTimeout(() => setImportError(""), 5000)
       }
-      console.error("Error fetching categories:", error)
-      return { data: mockCategories, error: null }
     }
-
-    return { data: data || mockCategories, error: null }
-  } catch (error) {
-    console.log("Unexpected error fetching categories:", error)
-    return { data: mockCategories, error: null }
   }
-}
 
-export async function saveCategory(category: Omit<Category, "id">) {
-  try {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase.from("categories").insert([category]).select().single()
+  const addNewProduct = async () => {
+    if (newProductName.trim()) {
+      try {
+        const qrcode = newProductQrCode.trim() || ""
+        const categoryId = newProductCategory === "none" ? undefined : newProductCategory
+        const existingProduct = products.find(
+          (p) => p.name === newProductName.trim() || (qrcode && p.qrcode === qrcode),
+        )
+        if (!existingProduct) {
+          console.log("addNewProduct aangeroepen voor:", newProductName.trim())
+          const result = await saveProduct({
+            name: newProductName.trim(),
+            qrcode,
+            categoryId,
+          })
 
-    if (error) {
-      if (
-        error.message.includes('relation "public.categories" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Categories table does not exist, using local fallback")
-        const newCategory = { ...category, id: Date.now().toString() } as Category
-        return { data: newCategory, error: null }
+          if (result.error) {
+            console.error("Fout bij toevoegen product:", result.error)
+            setImportError(`Fout bij toevoegen product: ${result.error.message || "Onbekende fout"}`)
+          } else {
+            if (result.data) {
+              console.log("Product direct toevoegen aan lijst:", result.data)
+              setProducts((prevProducts) => [result.data, ...prevProducts])
+            }
+
+            setNewProductName("")
+            setNewProductQrCode("")
+            setNewProductCategory("none")
+            setImportMessage("✅ Product toegevoegd!")
+            setTimeout(() => setImportMessage(""), 2000)
+          }
+        }
+      } catch (error) {
+        console.error("Onverwachte fout bij toevoegen product:", error)
+        setImportError("Fout bij toevoegen product")
       }
-      console.error("Error saving category:", error)
-      const newCategory = { ...category, id: Date.now().toString() } as Category
-      return { data: newCategory, error: null }
     }
-
-    return { data, error: null }
-  } catch (error) {
-    console.log("Unexpected error saving category:", error)
-    const newCategory = { ...category, id: Date.now().toString() } as Category
-    return { data: newCategory, error: null }
   }
-}
 
-export async function deleteCategory(id: string) {
-  const supabase = getSupabaseClient()
-  try {
-    const { error } = await supabase.from("categories").delete().eq("id", id)
+  const updateProduct = async () => {
+    console.log("updateProduct functie wordt aangeroepen!")
 
-    if (error) {
-      if (
-        error.message.includes('relation "public.categories" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Categories table does not exist, cannot delete from database")
-        return { error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
+    if (editingProduct && editingProduct.id) {
+      try {
+        console.log("Bezig met bijwerken van product:", editingProduct)
+
+        // Update lokaal eerst voor directe feedback
+        setProducts((prevProducts) => prevProducts.map((p) => (p.id === editingProduct.id ? editingProduct : p)))
+
+        // Toon direct een bericht dat het product is bijgewerkt
+        setImportMessage("✅ Product bijgewerkt!")
+        setShowEditDialog(false)
+        setEditingProduct(null)
+
+        // Probeer daarna de database bij te werken
+        const result = await updateProductInDB(editingProduct.id, {
+          name: editingProduct.name,
+          qrcode: editingProduct.qrcode,
+          categoryId: editingProduct.categoryId === "none" ? undefined : editingProduct.categoryId,
+        })
+
+        if (result.error && result.error.code !== "TABLE_NOT_FOUND") {
+          console.error("Fout bij bijwerken product in database:", result.error)
+          setImportMessage("⚠️ Product lokaal bijgewerkt (database niet beschikbaar)")
+        }
+
+        setTimeout(() => setImportMessage(""), 2000)
+      } catch (error) {
+        console.error("Fout bij bijwerken product:", error)
+        setImportError("Fout bij bijwerken product")
+        setTimeout(() => setImportError(""), 2000)
       }
-      console.error("Error deleting category:", error)
+    } else {
+      console.error("Geen geldig product om bij te werken")
     }
-
-    return { error: null }
-  } catch (error) {
-    console.error("Unexpected error deleting category:", error)
-    return { error: null }
   }
-}
 
-export async function updateProduct(id: string, updates: Partial<Product>) {
-  try {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase.from("products").update(updates).eq("id", id).select()
+  const addNewLocation = async () => {
+    if (newLocationName.trim() && !locations.includes(newLocationName.trim())) {
+      try {
+        console.log("addNewLocation aangeroepen voor:", newLocationName.trim())
+        const result = await saveLocation(newLocationName.trim())
 
-    if (error) {
-      if (
-        error.message.includes('relation "public.products" does not exist') ||
-        error.message.includes("does not exist")
-      ) {
-        console.log("Products table does not exist, cannot update in database")
-        return { data: null, error: { message: "Table does not exist", code: "TABLE_NOT_FOUND" } }
+        if (result.error) {
+          console.error("Fout bij toevoegen locatie:", result.error)
+          setImportError(`Fout bij toevoegen locatie: ${result.error.message || "Onbekende fout"}`)
+        } else {
+          if (result.data) {
+            console.log("Locatie direct toevoegen aan lijst:", result.data)
+            setLocations((prevLocations) => [newLocationName.trim(), ...prevLocations])
+          }
+
+          setNewLocationName("")
+          setImportMessage("✅ Locatie toegevoegd!")
+          setTimeout(() => setImportMessage(""), 2000)
+        }
+      } catch (error) {
+        console.error("Onverwachte fout bij toevoegen locatie:", error)
+        setImportError("Fout bij toevoegen locatie")
       }
-      console.error("Error updating product:", error)
-      return { data: null, error }
-    }
-
-    return { data: data?.[0] || null, error: null }
-  } catch (error) {
-    console.log("Unexpected error updating product:", error)
-    return { data: null, error: { message: "Unexpected error", code: "UNEXPECTED_ERROR" } }
-  }
-}
-
-// ===== REALTIME SUBSCRIPTIONS =====
-export function subscribeToUsers(callback: (users: string[]) => void) {
-  debugLog("Setting up users subscription")
-  const supabase = getSupabaseClient()
-
-  try {
-    const subscription = supabase
-      .channel("users-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "users" }, async (payload) => {
-        debugLog("Users change detected:", payload)
-        const { data, error } = await supabase.from("users").select("*").order("created_at", { ascending: false })
-
-        if (error) {
-          console.error("Error fetching updated users:", error)
-          return
-        }
-
-        if (data) {
-          const userNames = data.map((user) => user.name)
-          debugLog("Updated users list:", userNames)
-          callback(userNames)
-        }
-      })
-      .subscribe((status) => {
-        debugLog(`Users subscription status: ${status}`)
-      })
-
-    return subscription
-  } catch (error) {
-    console.error("Error setting up users subscription:", error)
-    return {
-      unsubscribe: () => {},
     }
   }
-}
 
-export function subscribeToProducts(callback: (products: Product[]) => void) {
-  debugLog("Setting up products subscription")
-  const supabase = getSupabaseClient()
+  const addNewPurpose = async () => {
+    if (newPurposeName.trim() && !purposes.includes(newPurposeName.trim())) {
+      try {
+        console.log("addNewPurpose aangeroepen voor:", newPurposeName.trim())
+        const result = await savePurpose(newPurposeName.trim())
 
-  try {
-    const subscription = supabase
-      .channel("products-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, async (payload) => {
-        debugLog("Products change detected:", payload)
-        const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false })
+        if (result.error) {
+          console.error("Fout bij toevoegen doel:", result.error)
+          setImportError(`Fout bij toevoegen doel: ${result.error.message || "Onbekende fout"}`)
+        } else {
+          if (result.data) {
+            console.log("Doel direct toevoegen aan lijst:", result.data)
+            setPurposes((prevPurposes) => [newPurposeName.trim(), ...prevPurposes])
+          }
 
-        if (error) {
-          console.error("Error fetching updated products:", error)
-          return
+          setNewPurposeName("")
+          setImportMessage("✅ Doel toegevoegd!")
+          setTimeout(() => setImportMessage(""), 2000)
         }
-
-        if (data) {
-          debugLog("Updated products list:", data)
-          callback(data)
-        }
-      })
-      .subscribe((status) => {
-        debugLog(`Products subscription status: ${status}`)
-      })
-
-    return subscription
-  } catch (error) {
-    console.error("Error setting up products subscription:", error)
-    return {
-      unsubscribe: () => {},
+      } catch (error) {
+        console.error("Onverwachte fout bij toevoegen doel:", error)
+        setImportError("Fout bij toevoegen doel")
+      }
     }
   }
-}
 
-export function subscribeToLocations(callback: (locations: string[]) => void) {
-  debugLog("Setting up locations subscription")
-  const supabase = getSupabaseClient()
+  const removeUser = async (userToRemove: string) => {
+    try {
+      console.log("removeUser functie aangeroepen voor:", userToRemove)
+      const result = await deleteUser(userToRemove)
 
-  try {
-    const subscription = supabase
-      .channel("locations-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "locations" }, async (payload) => {
-        debugLog("Locations change detected:", payload)
-        const { data, error } = await supabase.from("locations").select("*").order("created_at", { ascending: false })
+      if (result.error) {
+        console.error("Fout bij verwijderen gebruiker:", result.error)
+        setImportError(`Fout bij verwijderen gebruiker: ${result.error.message || "Onbekende fout"}`)
+        setTimeout(() => setImportError(""), 5000)
+      } else {
+        console.log("Gebruiker direct verwijderen uit lijst:", userToRemove)
+        setUsers((prevUsers) => prevUsers.filter((u) => u !== userToRemove))
 
-        if (error) {
-          console.error("Error fetching updated locations:", error)
-          return
-        }
-
-        if (data) {
-          const locationNames = data.map((location) => location.name)
-          debugLog("Updated locations list:", locationNames)
-          callback(locationNames)
-        }
-      })
-      .subscribe((status) => {
-        debugLog(`Locations subscription status: ${status}`)
-      })
-
-    return subscription
-  } catch (error) {
-    console.error("Error setting up locations subscription:", error)
-    return {
-      unsubscribe: () => {},
+        setImportMessage("✅ Gebruiker verwijderd!")
+        setTimeout(() => setImportMessage(""), 2000)
+      }
+    } catch (error) {
+      console.error("Onverwachte fout bij verwijderen gebruiker:", error)
+      setImportError(`Onverwachte fout: ${error instanceof Error ? error.message : "Onbekende fout"}`)
+      setTimeout(() => setImportError(""), 5000)
     }
   }
-}
 
-export function subscribeToPurposes(callback: (purposes: string[]) => void) {
-  debugLog("Setting up purposes subscription")
-  const supabase = getSupabaseClient()
+  const removeProduct = async (productToRemove: Product) => {
 
-  try {
-    const subscription = supabase
-      .channel("purposes-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "purposes" }, async (payload) => {
-        debugLog("Purposes change detected:", payload)
-        const { data, error } = await supabase.from("purposes").select("*").order("created_at", { ascending: false })
-
-        if (error) {
-          console.error("Error fetching updated purposes:", error)
-          return
-        }
-
-        if (data) {
-          const purposeNames = data.map((purpose) => purpose.name)
-          debugLog("Updated purposes list:", purposeNames)
-          callback(purposeNames)
-        }
-      })
-      .subscribe((status) => {
-        debugLog(`Purposes subscription status: ${status}`)
-      })
-
-    return subscription
-  } catch (error) {
-    console.error("Error setting up purposes subscription:", error)
-    return {
-      unsubscribe: () => {},
-    }
-  }
-}
-
-export function subscribeToRegistrations(callback: (registrations: RegistrationEntry[]) => void) {
-  const supabase = getSupabaseClient()
-
-  return supabase
-    .channel("registrations-changes")
-    .on("postgres_changes", { event: "*", schema: "public", table: "registrations" }, async () => {
-      const { data } = await fetchRegistrations()
-      if (data) callback(data)
-    })
-    .subscribe()
-}
-
-export function subscribeToCategories(callback: (categories: Category[]) => void) {
-  debugLog("Setting up categories subscription")
-  const supabase = getSupabaseClient()
-
-  try {
-    const subscription = supabase
-      .channel("categories-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, async (payload) => {
-        debugLog("Categories change detected:", payload)
-        const { data, error } = await supabase.from("categories").select("*").order("name")
-
-        if (error) {
-          console.error("Error fetching updated categories:", error)
-          return
-        }
-
-        if (data) {
-          debugLog("Updated categories list:", data)
-          callback(data)
-        }
-      })
-      .subscribe((status) => {
-        debugLog(`Categories subscription status: ${status}`)
-      })
-
-    return subscription
-  } catch (error) {
-    console.error("Error setting up categories subscription:", error)
-    return {
-      unsubscribe: () => {},
-    }
-  }
-}
