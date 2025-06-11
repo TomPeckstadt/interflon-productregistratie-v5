@@ -172,6 +172,8 @@ export default function ProductRegistrationApp() {
   const purposeFileInputRef = useRef<HTMLInputElement>(null)
 
   // Load data from localStorage on mount
+  const [selectedCategory, setSelectedCategory] = useState("all")
+
   useEffect(() => {
     const savedUsers = localStorage.getItem("interflon-users")
     const savedProducts = localStorage.getItem("interflon-products")
@@ -246,6 +248,7 @@ export default function ProductRegistrationApp() {
 
       // Reset form
       setSelectedProduct("")
+      setSelectedCategory("all")
       setLocation("")
       setPurpose("")
       setQrScanResult("")
@@ -276,6 +279,10 @@ export default function ProductRegistrationApp() {
 
       if (foundProduct) {
         setSelectedProduct(foundProduct.name)
+        // Automatisch de categorie selecteren als het product een categorie heeft
+        if (foundProduct.categoryId) {
+          setSelectedCategory(foundProduct.categoryId)
+        }
         setImportMessage(`✅ Product gevonden: ${foundProduct.name}`)
         setTimeout(() => setImportMessage(""), 3000)
       } else {
@@ -922,6 +929,23 @@ export default function ProductRegistrationApp() {
                     </div>
 
                     <div className="space-y-2">
+                      <Label className="text-sm sm:text-base font-medium">🗂️ Categorie</Label>
+                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                        <SelectTrigger className="h-10 sm:h-12">
+                          <SelectValue placeholder="Selecteer een categorie" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Alle categorieën</SelectItem>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
                       <Label className="text-sm sm:text-base font-medium">📦 Product</Label>
                       <div className="flex gap-2">
                         <Select value={selectedProduct} onValueChange={setSelectedProduct} required>
@@ -929,11 +953,15 @@ export default function ProductRegistrationApp() {
                             <SelectValue placeholder="Selecteer een product" />
                           </SelectTrigger>
                           <SelectContent>
-                            {products.map((product) => (
-                              <SelectItem key={product.id} value={product.name}>
-                                {product.name} {product.qrcode && `(${product.qrcode})`}
-                              </SelectItem>
-                            ))}
+                            {products
+                              .filter(
+                                (product) => selectedCategory === "all" || product.categoryId === selectedCategory,
+                              )
+                              .map((product) => (
+                                <SelectItem key={product.id} value={product.name}>
+                                  {product.name} {product.qrcode && `(${product.qrcode})`}
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                         <Button
