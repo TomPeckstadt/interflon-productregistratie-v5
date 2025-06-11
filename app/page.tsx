@@ -1,36 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import type React from "react"
-import {
-  fetchProducts,
-  saveProduct,
-  updateProduct as updateProductInDB,
-  deleteProduct,
-  fetchUsers,
-  saveUser,
-  deleteUser,
-  fetchLocations,
-  saveLocation,
-  deleteLocation,
-  fetchPurposes,
-  savePurpose,
-  deletePurpose,
-  fetchRegistrations,
-  saveRegistration,
-  subscribeToProducts,
-  subscribeToUsers,
-  subscribeToLocations,
-  subscribeToPurposes,
-  subscribeToRegistrations,
-  fetchCategories,
-  saveCategory,
-  deleteCategory,
-  type Category,
-  type Product,
-  type RegistrationEntry,
-  testSupabaseConnection,
-} from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -40,34 +11,75 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Download, Search, X, Plus, Trash2, Edit } from "lucide-react"
+import { Download, Plus, Trash2 } from "lucide-react"
 
-// Voeg deze imports toe voor de charts
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
+// Types
+interface Product {
+  id: string
+  name: string
+  qrcode?: string
+  categoryId?: string
+}
 
-// Import the auth components from the separate file
-import { useAuth, LoginForm } from "@/lib/auth-components"
-import type { User } from "@/lib/auth"
+interface Category {
+  id: string
+  name: string
+}
+
+interface Registration {
+  id: string
+  productId: string
+  productName: string
+  user: string
+  location: string
+  purpose: string
+  timestamp: string
+  qrcode?: string
+}
 
 export default function ProductRegistrationApp() {
-  const { user, loading } = useAuth()
-
+  // Basic state
   const [currentUser, setCurrentUser] = useState("")
   const [selectedProduct, setSelectedProduct] = useState("")
   const [location, setLocation] = useState("")
   const [purpose, setPurpose] = useState("")
-  const [entries, setEntries] = useState<RegistrationEntry[]>([])
   const [showSuccess, setShowSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Beheer states
-  const [users, setUsers] = useState<string[]>([])
-  const [products, setProducts] = useState<Product[]>([])
-  const [locations, setLocations] = useState<string[]>([])
-  const [purposes, setPurposes] = useState<string[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
+  // Data arrays - stored in localStorage
+  const [users, setUsers] = useState<string[]>(["Jan Janssen", "Marie Pietersen", "Piet de Vries", "Anna van der Berg"])
 
-  // Nieuwe item states
+  const [products, setProducts] = useState<Product[]>([
+    { id: "1", name: "Interflon Fin Super", qrcode: "IFLS001", categoryId: "1" },
+    { id: "2", name: "Interflon Food Lube", qrcode: "IFFL002", categoryId: "1" },
+    { id: "3", name: "Interflon Degreaser", qrcode: "IFD003", categoryId: "2" },
+  ])
+
+  const [locations, setLocations] = useState<string[]>([
+    "Kantoor 1.1",
+    "Kantoor 1.2",
+    "Vergaderzaal A",
+    "Warehouse",
+    "Thuis",
+  ])
+
+  const [purposes, setPurposes] = useState<string[]>([
+    "Presentatie",
+    "Thuiswerken",
+    "Reparatie",
+    "Training",
+    "Demonstratie",
+  ])
+
+  const [categories, setCategories] = useState<Category[]>([
+    { id: "1", name: "Smeermiddelen" },
+    { id: "2", name: "Reinigers" },
+    { id: "3", name: "Onderhoud" },
+  ])
+
+  const [registrations, setRegistrations] = useState<Registration[]>([])
+
+  // New item states
   const [newUserName, setNewUserName] = useState("")
   const [newProductName, setNewProductName] = useState("")
   const [newProductQrCode, setNewProductQrCode] = useState("")
@@ -76,407 +88,52 @@ export default function ProductRegistrationApp() {
   const [newPurposeName, setNewPurposeName] = useState("")
   const [newCategoryName, setNewCategoryName] = useState("")
 
-  // QR Scanner states
-  const [showQrScanner, setShowQrScanner] = useState(false)
-  const [qrScanResult, setQrScanResult] = useState("")
-  const [qrScanMode, setQrScanMode] = useState<"registration" | "product-management">("registration")
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
-  const [isScanning, setIsScanning] = useState(false)
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const scanIntervalRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Import states
-  const [importMessage, setImportMessage] = useState("")
-  const [importError, setImportError] = useState("")
-  const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "error">("connecting")
-  const userFileInputRef = useRef<HTMLInputElement>(null)
-  const productFileInputRef = useRef<HTMLInputElement>(null)
-  const locationFileInputRef = useRef<HTMLInputElement>(null)
-  const purposeFileInputRef = useRef<HTMLInputElement>(null)
-
-  // Filter en zoek states
-  const [searchQuery, setSearchQuery] = useState("")
-  const [filterUser, setFilterUser] = useState("all")
-  const [filterProduct, setFilterProduct] = useState("")
-  const [filterLocation, setFilterLocation] = useState("all")
-  const [filterDateFrom, setFilterDateFrom] = useState("")
-  const [filterDateTo, setFilterDateTo] = useState("")
-  const [sortBy, setSortBy] = useState<"date" | "user" | "product">("date")
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
-
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-  const [showEditDialog, setShowEditDialog] = useState(false)
-
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
-  const [showEditCategoryDialog, setShowEditCategoryDialog] = useState(false)
-
-  // Laad alle data bij start
+  // Load data from localStorage on mount
   useEffect(() => {
-    if (user) {
-      loadAllData()
-      setupRealtimeSubscriptions()
-    }
-  }, [user])
+    const savedUsers = localStorage.getItem("interflon-users")
+    const savedProducts = localStorage.getItem("interflon-products")
+    const savedLocations = localStorage.getItem("interflon-locations")
+    const savedPurposes = localStorage.getItem("interflon-purposes")
+    const savedCategories = localStorage.getItem("interflon-categories")
+    const savedRegistrations = localStorage.getItem("interflon-registrations")
 
-  // Cleanup camera stream when component unmounts
+    if (savedUsers) setUsers(JSON.parse(savedUsers))
+    if (savedProducts) setProducts(JSON.parse(savedProducts))
+    if (savedLocations) setLocations(JSON.parse(savedLocations))
+    if (savedPurposes) setPurposes(JSON.parse(savedPurposes))
+    if (savedCategories) setCategories(JSON.parse(savedCategories))
+    if (savedRegistrations) setRegistrations(JSON.parse(savedRegistrations))
+
+    // Set default user
+    if (users.length > 0 && !currentUser) {
+      setCurrentUser(users[0])
+    }
+  }, [])
+
+  // Save to localStorage whenever data changes
   useEffect(() => {
-    return () => {
-      if (cameraStream) {
-        cameraStream.getTracks().forEach((track) => track.stop())
-      }
-      if (scanIntervalRef.current) {
-        clearInterval(scanIntervalRef.current)
-      }
-    }
-  }, [cameraStream])
+    localStorage.setItem("interflon-users", JSON.stringify(users))
+  }, [users])
 
-  const loadAllData = async () => {
-    try {
-      setConnectionStatus("connecting")
-      
-      // Test connectie eerst
-      const connectionTest = await testSupabaseConnection()
-      console.log("Connection test result:", connectionTest)
-      
-      if (!connectionTest.auth && !connectionTest.database) {
-        console.log("No Supabase connection, using mock data only")
-        setConnectionStatus("error")
-        setImportError("⚠️ Geen database verbinding - gebruikt lokale data")
-        return
-      }
+  useEffect(() => {
+    localStorage.setItem("interflon-products", JSON.stringify(products))
+  }, [products])
 
-      const [usersResult, productsResult, categoriesResult, locationsResult, purposesResult, registrationsResult] =
-        await Promise.all([
-          fetchUsers(),
-          fetchProducts(),
-          fetchCategories(),
-          fetchLocations(),
-          fetchPurposes(),
-          fetchRegistrations(),
-        ])
+  useEffect(() => {
+    localStorage.setItem("interflon-locations", JSON.stringify(locations))
+  }, [locations])
 
-      if (usersResult.data) {
-        setUsers(usersResult.data)
-        if (usersResult.data.length > 0 && !currentUser) {
-          setCurrentUser(usersResult.data[0])
-        }
-      }
+  useEffect(() => {
+    localStorage.setItem("interflon-purposes", JSON.stringify(purposes))
+  }, [purposes])
 
-      if (productsResult.data) setProducts(productsResult.data)
-      if (locationsResult.data) setLocations(locationsResult.data)
-      if (purposesResult.data) setPurposes(purposesResult.data)
-      if (categoriesResult.data) setCategories(categoriesResult.data)
-      if (registrationsResult.data) setEntries(registrationsResult.data)
+  useEffect(() => {
+    localStorage.setItem("interflon-categories", JSON.stringify(categories))
+  }, [categories])
 
-      setConnectionStatus("connected")
-      setImportMessage("✅ Verbonden met database - alle data gesynchroniseerd!")
-      setTimeout(() => setImportMessage(""), 3000)
-    } catch (error) {
-      console.error("Error loading data:", error)
-      setConnectionStatus("error")
-      setImportError(`❌ Fout bij verbinden met database: ${error instanceof Error ? error.message : "Onbekende fout"}`)
-    }
-  }
-
-  const setupRealtimeSubscriptions = () => {
-    console.log("Setting up realtime subscriptions...")
-
-    try {
-      const unsubscribeProducts = subscribeToProducts((updatedProducts) => {
-        console.log("Products subscription update received:", updatedProducts.length)
-        setProducts(updatedProducts)
-      })
-
-      const unsubscribeUsers = subscribeToUsers((updatedUsers) => {
-        console.log("Users subscription update received:", updatedUsers.length)
-        setUsers(updatedUsers)
-      })
-
-      const unsubscribeLocations = subscribeToLocations((updatedLocations) => {
-        console.log("Locations subscription update received:", updatedLocations.length)
-        setLocations(updatedLocations)
-      })
-
-      const unsubscribePurposes = subscribeToPurposes((updatedPurposes) => {
-        console.log("Purposes subscription update received:", updatedPurposes.length)
-        setPurposes(updatedPurposes)
-      })
-
-      const unsubscribeRegistrations = subscribeToRegistrations((updatedRegistrations) => {
-        console.log("Registrations subscription update received:", updatedRegistrations.length)
-        setEntries(updatedRegistrations)
-      })
-
-      console.log("All realtime subscriptions set up successfully")
-
-      return () => {
-        console.log("Cleaning up subscriptions...")
-        if (unsubscribeProducts) unsubscribeProducts.unsubscribe()
-        if (unsubscribeUsers) unsubscribeUsers.unsubscribe()
-        if (unsubscribeLocations) unsubscribeLocations.unsubscribe()
-        if (unsubscribePurposes) unsubscribePurposes.unsubscribe()
-        if (unsubscribeRegistrations) unsubscribeRegistrations.unsubscribe()
-      }
-    } catch (error) {
-      console.error("Error setting up realtime subscriptions:", error)
-      setImportError("Fout bij het opzetten van realtime updates. Vernieuw de pagina om het opnieuw te proberen.")
-      return () => {}
-    }
-  }
-
-  // Eenvoudige QR code detectie functie
-  const detectQRCode = () => {
-    if (!videoRef.current || !canvasRef.current) return
-
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    const context = canvas.getContext("2d")
-
-    if (!context || video.videoWidth === 0 || video.videoHeight === 0) return
-
-    // Set canvas size to match video
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-
-    // Draw current video frame to canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    // Get image data
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
-
-    // Hier zou normaal een QR code library gebruikt worden
-    // Voor nu simuleren we QR code detectie door te kijken naar donkere pixels
-    // Dit is een zeer eenvoudige implementatie
-
-    // In een echte implementatie zou je een library zoals jsQR gebruiken:
-    // const code = jsQR(imageData.data, imageData.width, imageData.height)
-    // if (code) {
-    //   handleQrCodeDetected(code.data)
-    // }
-  }
-
-  const startQrScanner = async () => {
-    try {
-      console.log("Starting QR scanner...")
-
-      // Toon eerst de modal
-      setShowQrScanner(true)
-      setIsScanning(true)
-
-      // Check if getUserMedia is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        console.log("Camera not supported, showing manual input")
-        setIsScanning(false)
-        return
-      }
-
-      // Request camera access
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "environment",
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-        },
-      })
-
-      console.log("Camera stream obtained:", stream)
-      setCameraStream(stream)
-
-      // Wait for video element to be available
-      setTimeout(() => {
-        if (videoRef.current && stream) {
-          console.log("Setting video source...")
-          videoRef.current.srcObject = stream
-          videoRef.current
-            .play()
-            .then(() => {
-              // Start scanning for QR codes
-              scanIntervalRef.current = setInterval(detectQRCode, 500) // Scan every 500ms
-            })
-            .catch(console.error)
-        }
-      }, 100)
-    } catch (error) {
-      console.error("Camera error:", error)
-      setIsScanning(false)
-      // Modal is already open, just show manual input option
-    }
-  }
-
-  const stopQrScanner = () => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach((track) => track.stop())
-      setCameraStream(null)
-    }
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current)
-      scanIntervalRef.current = null
-    }
-    setShowQrScanner(false)
-    setIsScanning(false)
-  }
-
-  const scanQrCode = () => {
-    const qrInput = prompt("Voer QR code in:")
-    if (qrInput && qrInput.trim()) {
-      handleQrCodeDetected(qrInput.trim())
-    }
-  }
-
-  const handleQrCodeDetected = (qrCode: string) => {
-    console.log("QR Code detected:", qrCode)
-    setQrScanResult(qrCode)
-
-    if (qrScanMode === "registration") {
-      const foundProduct = products.find((p) => p.qrcode === qrCode)
-
-      if (foundProduct) {
-        setSelectedProduct(foundProduct.name)
-        setImportMessage(`✅ Product gevonden: ${foundProduct.name}`)
-        setTimeout(() => setImportMessage(""), 3000)
-      } else {
-        setImportError(`❌ Geen product gevonden voor QR code: ${qrCode}`)
-        setTimeout(() => setImportError(""), 3000)
-      }
-    } else if (qrScanMode === "product-management") {
-      setNewProductQrCode(qrCode)
-      setImportMessage(`✅ QR code gescand: ${qrCode}`)
-      setTimeout(() => setImportMessage(""), 3000)
-    }
-
-    stopQrScanner()
-  }
-
-  const handleFileImport = async (file: File, type: "users" | "products" | "locations" | "purposes") => {
-    try {
-      setImportError("")
-      setImportMessage("Bestand wordt verwerkt...")
-
-      const text = await file.text()
-      let items: string[] = []
-
-      if (file.name.endsWith(".csv")) {
-        const lines = text.split("\n").filter((line) => line.trim())
-
-        if (type === "products") {
-          const newProducts: Product[] = []
-          lines.forEach((line) => {
-            const [name, qrcode] = line.split(",").map((item) => item.replace(/"/g, "").trim())
-            if (name && qrcode) {
-              newProducts.push({ name, qrcode })
-            }
-          })
-
-          if (newProducts.length > 0) {
-            for (const product of newProducts) {
-              await saveProduct(product)
-            }
-            setImportMessage(`✅ ${newProducts.length} nieuwe producten geïmporteerd!`)
-            setTimeout(() => setImportMessage(""), 5000)
-          }
-          return
-        } else {
-          items = lines
-            .map((line) => line.split(",")[0].replace(/"/g, "").trim())
-            .filter((item) => item && item.length > 0)
-        }
-      } else {
-        items = text
-          .split("\n")
-          .map((line) => line.trim())
-          .filter((line) => line && line.length > 0)
-      }
-
-      if (items.length === 0) {
-        setImportError("Geen geldige items gevonden in het bestand")
-        return
-      }
-
-      let savedCount = 0
-      for (const item of items) {
-        try {
-          switch (type) {
-            case "users":
-              if (!users.includes(item)) {
-                await saveUser(item)
-                savedCount++
-              }
-              break
-            case "locations":
-              if (!locations.includes(item)) {
-                await saveLocation(item)
-                savedCount++
-              }
-              break
-            case "purposes":
-              if (!purposes.includes(item)) {
-                await savePurpose(item)
-                savedCount++
-              }
-              break
-          }
-        } catch (error) {
-          console.error(`Error saving ${item}:`, error)
-        }
-      }
-
-      setImportMessage(
-        `✅ ${savedCount} nieuwe ${type} geïmporteerd! (${items.length - savedCount} duplicaten overgeslagen)`,
-      )
-
-      if (type === "users" && userFileInputRef.current) userFileInputRef.current.value = ""
-      if (type === "products" && productFileInputRef.current) productFileInputRef.current.value = ""
-      if (type === "locations" && locationFileInputRef.current) locationFileInputRef.current.value = ""
-      if (type === "purposes" && purposeFileInputRef.current) purposeFileInputRef.current.value = ""
-
-      setTimeout(() => setImportMessage(""), 5000)
-    } catch (error) {
-      setImportError(`Fout bij importeren: ${error instanceof Error ? error.message : "Onbekende fout"}`)
-      setTimeout(() => setImportError(""), 5000)
-    }
-  }
-
-  const exportTemplate = (type: "users" | "products" | "locations" | "purposes") => {
-    let templateData: string[] = []
-    let filename = ""
-
-    switch (type) {
-      case "users":
-        templateData = ["Jan Janssen", "Marie Pietersen", "Piet de Vries", "Anna van der Berg", "Nieuwe Gebruiker"]
-        filename = "gebruikers-template.csv"
-        break
-      case "products":
-        templateData = [
-          "Laptop Dell XPS,DELL-XPS-001",
-          "Monitor Samsung 24,SAM-MON-002",
-          "Muis Logitech,LOG-MOU-003",
-          "Toetsenbord Mechanical,MECH-KEY-004",
-          "Nieuw Product,NEW-PROD-005",
-        ]
-        filename = "producten-template.csv"
-        break
-      case "locations":
-        templateData = ["Kantoor 1.1", "Kantoor 1.2", "Vergaderzaal A", "Warehouse", "Thuis", "Nieuwe Locatie"]
-        filename = "locaties-template.csv"
-        break
-      case "purposes":
-        templateData = ["Presentatie", "Thuiswerken", "Reparatie", "Training", "Demonstratie", "Nieuw Doel"]
-        filename = "doelen-template.csv"
-        break
-    }
-
-    const csvContent = templateData.join("\n")
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const link = document.createElement("a")
-    const url = URL.createObjectURL(blob)
-    link.setAttribute("href", url)
-    link.setAttribute("download", filename)
-    link.style.visibility = "hidden"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+  useEffect(() => {
+    localStorage.setItem("interflon-registrations", JSON.stringify(registrations))
+  }, [registrations])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -489,624 +146,173 @@ export default function ProductRegistrationApp() {
 
     try {
       const now = new Date()
-      const productQrcode = products.find((p) => p.name === selectedProduct)?.qrcode || ""
+      const product = products.find((p) => p.name === selectedProduct)
 
-      const newEntry: Omit<RegistrationEntry, "id" | "created_at"> = {
+      const newRegistration: Registration = {
+        id: Date.now().toString(),
+        productId: product?.id || "",
+        productName: selectedProduct,
         user: currentUser,
-        product: selectedProduct,
         location,
         purpose,
         timestamp: now.toISOString(),
-        date: now.toLocaleDateString("nl-NL"),
-        time: now.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }),
-        qrcode: productQrcode,
+        qrcode: product?.qrcode,
       }
 
-      const result = await saveRegistration(newEntry)
+      setRegistrations((prev) => [newRegistration, ...prev])
 
-      if (result.data) {
-        console.log("Registratie direct toevoegen aan lijst:", result.data)
-        setEntries((prevEntries) => [result.data, ...prevEntries])
+      // Reset form
+      setSelectedProduct("")
+      setLocation("")
+      setPurpose("")
 
-        setSelectedProduct("")
-        setLocation("")
-        setPurpose("")
-        setQrScanResult("")
-
-        setShowSuccess(true)
-        setTimeout(() => setShowSuccess(false), 3000)
-      } else {
-        setImportError("Fout bij opslaan registratie")
-      }
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 3000)
     } catch (error) {
       console.error("Error saving registration:", error)
-      setImportError("Fout bij opslaan registratie")
     }
 
     setIsLoading(false)
   }
 
+  const addNewUser = () => {
+    if (newUserName.trim() && !users.includes(newUserName.trim())) {
+      setUsers((prev) => [...prev, newUserName.trim()])
+      setNewUserName("")
+    }
+  }
+
+  const addNewProduct = () => {
+    if (newProductName.trim()) {
+      const newProduct: Product = {
+        id: Date.now().toString(),
+        name: newProductName.trim(),
+        qrcode: newProductQrCode.trim() || undefined,
+        categoryId: newProductCategory === "none" ? undefined : newProductCategory,
+      }
+      setProducts((prev) => [newProduct, ...prev])
+      setNewProductName("")
+      setNewProductQrCode("")
+      setNewProductCategory("none")
+    }
+  }
+
+  const addNewLocation = () => {
+    if (newLocationName.trim() && !locations.includes(newLocationName.trim())) {
+      setLocations((prev) => [...prev, newLocationName.trim()])
+      setNewLocationName("")
+    }
+  }
+
+  const addNewPurpose = () => {
+    if (newPurposeName.trim() && !purposes.includes(newPurposeName.trim())) {
+      setPurposes((prev) => [...prev, newPurposeName.trim()])
+      setNewPurposeName("")
+    }
+  }
+
+  const addNewCategory = () => {
+    if (newCategoryName.trim() && !categories.find((c) => c.name === newCategoryName.trim())) {
+      const newCategory: Category = {
+        id: Date.now().toString(),
+        name: newCategoryName.trim(),
+      }
+      setCategories((prev) => [...prev, newCategory])
+      setNewCategoryName("")
+    }
+  }
+
+  const removeUser = (userToRemove: string) => {
+    setUsers((prev) => prev.filter((u) => u !== userToRemove))
+  }
+
+  const removeProduct = (productToRemove: Product) => {
+    setProducts((prev) => prev.filter((p) => p.id !== productToRemove.id))
+  }
+
+  const removeLocation = (locationToRemove: string) => {
+    setLocations((prev) => prev.filter((l) => l !== locationToRemove))
+  }
+
+  const removePurpose = (purposeToRemove: string) => {
+    setPurposes((prev) => prev.filter((p) => p !== purposeToRemove))
+  }
+
+  const removeCategory = (categoryToRemove: Category) => {
+    setCategories((prev) => prev.filter((c) => c.id !== categoryToRemove.id))
+  }
+
   const exportToCSV = () => {
-    const filteredEntries = getFilteredAndSortedEntries()
     const headers = ["Datum", "Tijd", "Gebruiker", "Product", "QR Code", "Locatie", "Doel"]
     const csvContent = [
       headers.join(","),
-      ...filteredEntries.map((entry) =>
-        [
-          entry.date,
-          entry.time,
+      ...registrations.map((entry) => {
+        const date = new Date(entry.timestamp)
+        return [
+          date.toLocaleDateString("nl-NL"),
+          date.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }),
           `"${entry.user}"`,
-          `"${entry.product}"`,
+          `"${entry.productName}"`,
           `"${entry.qrcode || ""}"`,
           `"${entry.location}"`,
           `"${entry.purpose}"`,
-          `"${entry.purpose}"`,
-        ].join(","),
-      ),
+        ].join(",")
+      }),
     ].join("\n")
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
     const link = document.createElement("a")
     const url = URL.createObjectURL(blob)
     link.setAttribute("href", url)
-
-    const filterSuffix =
-      searchQuery || filterUser !== "all" || filterProduct || filterLocation !== "all" ? "-gefilterd" : ""
-    link.setAttribute("download", `product-registraties${filterSuffix}-${new Date().toISOString().split("T")[0]}.csv`)
-
+    link.setAttribute("download", `product-registraties-${new Date().toISOString().split("T")[0]}.csv`)
     link.style.visibility = "hidden"
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
   }
 
-  const addNewUser = async () => {
-    if (newUserName.trim() && !users.includes(newUserName.trim())) {
-      try {
-        console.log("addNewUser functie aangeroepen voor:", newUserName.trim())
-        const result = await saveUser(newUserName.trim())
-
-        if (result.error) {
-          console.error("Fout bij toevoegen gebruiker:", result.error)
-          setImportError(`Fout bij toevoegen gebruiker: ${result.error.message || "Onbekende fout"}`)
-          setTimeout(() => setImportError(""), 5000)
-        } else {
-          if (result.data) {
-            console.log("Gebruiker direct toevoegen aan lijst:", result.data)
-            setUsers((prevUsers) => [...prevUsers, newUserName.trim()])
-          }
-
-          setNewUserName("")
-          setImportMessage("✅ Gebruiker toegevoegd!")
-          setTimeout(() => setImportMessage(""), 2000)
-        }
-      } catch (error) {
-        console.error("Onverwachte fout bij toevoegen gebruiker:", error)
-        setImportError(`Onverwachte fout: ${error instanceof Error ? error.message : "Onbekende fout"}`)
-        setTimeout(() => setImportError(""), 5000)
-      }
-    }
+  const getCategoryName = (categoryId?: string) => {
+    if (!categoryId) return "-"
+    const category = categories.find((c) => c.id === categoryId)
+    return category ? category.name : "-"
   }
 
-  const addNewProduct = async () => {
-    if (newProductName.trim()) {
-      try {
-        const qrcode = newProductQrCode.trim() || ""
-        const categoryId = newProductCategory === "none" ? undefined : newProductCategory
-        const existingProduct = products.find(
-          (p) => p.name === newProductName.trim() || (qrcode && p.qrcode === qrcode),
-        )
-        if (!existingProduct) {
-          console.log("addNewProduct aangeroepen voor:", newProductName.trim())
-          const result = await saveProduct({
-            name: newProductName.trim(),
-            qrcode,
-            categoryId,
-          })
-
-          if (result.error) {
-            console.error("Fout bij toevoegen product:", result.error)
-            setImportError(`Fout bij toevoegen product: ${result.error.message || "Onbekende fout"}`)
-          } else {
-            if (result.data) {
-              console.log("Product direct toevoegen aan lijst:", result.data)
-              setProducts((prevProducts) => [result.data, ...prevProducts])
-            }
-
-            setNewProductName("")
-            setNewProductQrCode("")
-            setNewProductCategory("none")
-            setImportMessage("✅ Product toegevoegd!")
-            setTimeout(() => setImportMessage(""), 2000)
-          }
-        }
-      } catch (error) {
-        console.error("Onverwachte fout bij toevoegen product:", error)
-        setImportError("Fout bij toevoegen product")
-      }
-    }
-  }
-
-  const updateProduct = async () => {
-    console.log("updateProduct functie wordt aangeroepen!")
-
-    if (editingProduct && editingProduct.id) {
-      try {
-        console.log("Bezig met bijwerken van product:", editingProduct)
-
-        // Update lokaal eerst voor directe feedback
-        setProducts((prevProducts) => prevProducts.map((p) => (p.id === editingProduct.id ? editingProduct : p)))
-
-        // Toon direct een bericht dat het product is bijgewerkt
-        setImportMessage("✅ Product bijgewerkt!")
-        setShowEditDialog(false)
-        setEditingProduct(null)
-
-        // Probeer daarna de database bij te werken
-        const result = await updateProductInDB(editingProduct.id, {
-          name: editingProduct.name,
-          qrcode: editingProduct.qrcode,
-          categoryId: editingProduct.categoryId === "none" ? undefined : editingProduct.categoryId,
-        })
-
-        if (result.error && result.error.code !== "TABLE_NOT_FOUND") {
-          console.error("Fout bij bijwerken product in database:", result.error)
-          setImportMessage("⚠️ Product lokaal bijgewerkt (database niet beschikbaar)")
-        }
-
-        setTimeout(() => setImportMessage(""), 2000)
-      } catch (error) {
-        console.error("Fout bij bijwerken product:", error)
-        setImportError("Fout bij bijwerken product")
-        setTimeout(() => setImportError(""), 2000)
-      }
-    } else {
-      console.error("Geen geldig product om bij te werken")
-    }
-  }
-
-  const addNewLocation = async () => {
-    if (newLocationName.trim() && !locations.includes(newLocationName.trim())) {
-      try {
-        console.log("addNewLocation aangeroepen voor:", newLocationName.trim())
-        const result = await saveLocation(newLocationName.trim())
-
-        if (result.error) {
-          console.error("Fout bij toevoegen locatie:", result.error)
-          setImportError(`Fout bij toevoegen locatie: ${result.error.message || "Onbekende fout"}`)
-        } else {
-          if (result.data) {
-            console.log("Locatie direct toevoegen aan lijst:", result.data)
-            setLocations((prevLocations) => [newLocationName.trim(), ...prevLocations])
-          }
-
-          setNewLocationName("")
-          setImportMessage("✅ Locatie toegevoegd!")
-          setTimeout(() => setImportMessage(""), 2000)
-        }
-      } catch (error) {
-        console.error("Onverwachte fout bij toevoegen locatie:", error)
-        setImportError("Fout bij toevoegen locatie")
-      }
-    }
-  }
-
-  const addNewPurpose = async () => {
-    if (newPurposeName.trim() && !purposes.includes(newPurposeName.trim())) {
-      try {
-        console.log("addNewPurpose aangeroepen voor:", newPurposeName.trim())
-        const result = await savePurpose(newPurposeName.trim())
-
-        if (result.error) {
-          console.error("Fout bij toevoegen doel:", result.error)
-          setImportError(`Fout bij toevoegen doel: ${result.error.message || "Onbekende fout"}`)
-        } else {
-          if (result.data) {
-            console.log("Doel direct toevoegen aan lijst:", result.data)
-            setPurposes((prevPurposes) => [newPurposeName.trim(), ...prevPurposes])
-          }
-
-          setNewPurposeName("")
-          setImportMessage("✅ Doel toegevoegd!")
-          setTimeout(() => setImportMessage(""), 2000)
-        }
-      } catch (error) {
-        console.error("Onverwachte fout bij toevoegen doel:", error)
-        setImportError("Fout bij toevoegen doel")
-      }
-    }
-  }
-
-  const removeUser = async (userToRemove: string) => {
-    try {
-      console.log("removeUser functie aangeroepen voor:", userToRemove)
-      const result = await deleteUser(userToRemove)
-
-      if (result.error) {
-        console.error("Fout bij verwijderen gebruiker:", result.error)
-        setImportError(`Fout bij verwijderen gebruiker: ${result.error.message || "Onbekende fout"}`)
-        setTimeout(() => setImportError(""), 5000)
-      } else {
-        console.log("Gebruiker direct verwijderen uit lijst:", userToRemove)
-        setUsers((prevUsers) => prevUsers.filter((u) => u !== userToRemove))
-
-        setImportMessage("✅ Gebruiker verwijderd!")
-        setTimeout(() => setImportMessage(""), 2000)
-      }
-    } catch (error) {
-      console.error("Onverwachte fout bij verwijderen gebruiker:", error)
-      setImportError(`Onverwachte fout: ${error instanceof Error ? error.message : "Onbekende fout"}`)
-      setTimeout(() => setImportError(""), 5000)
-    }
-  }
-
-  const removeProduct = async (productToRemove: Product) => {
-    try {
-      if (productToRemove.id) {
-        console.log("removeProduct aangeroepen voor:", productToRemove)
-        const result = await deleteProduct(productToRemove.id)
-
-        if (result.error) {
-          console.error("Fout bij verwijderen product:", result.error)
-          setImportError(`Fout bij verwijderen product: ${result.error.message || "Onbekende fout"}`)
-        } else {
-          console.log("Product direct verwijderen uit lijst:", productToRemove.id)
-          setProducts((prevProducts) => prevProducts.filter((p) => p.id !== productToRemove.id))
-
-          setImportMessage("✅ Product verwijderd!")
-          setTimeout(() => setImportMessage(""), 2000)
-        }
-      }
-    } catch (error) {
-      console.error("Onverwachte fout bij verwijderen product:", error)
-      setImportError("Fout bij verwijderen product")
-    }
-  }
-
-  const removeLocation = async (locationToRemove: string) => {
-    try {
-      console.log("removeLocation aangeroepen voor:", locationToRemove)
-      const result = await deleteLocation(locationToRemove)
-
-      if (result.error) {
-        console.error("Fout bij verwijderen locatie:", result.error)
-        setImportError(`Fout bij verwijderen locatie: ${result.error.message || "Onbekende fout"}`)
-      } else {
-        console.log("Locatie direct verwijderen uit lijst:", locationToRemove)
-        setLocations((prevLocations) => prevLocations.filter((l) => l !== locationToRemove))
-
-        setImportMessage("✅ Locatie verwijderd!")
-        setTimeout(() => setImportMessage(""), 2000)
-      }
-    } catch (error) {
-      console.error("Fout bij verwijderen locatie:", error)
-      setImportError("Fout bij verwijderen locatie")
-    }
-  }
-
-  const removePurpose = async (purposeToRemove: string) => {
-    try {
-      console.log("removePurpose aangeroepen voor:", purposeToRemove)
-      const result = await deletePurpose(purposeToRemove)
-
-      if (result.error) {
-        console.error("Fout bij verwijderen doel:", result.error)
-        setImportError(`Fout bij verwijderen doel: ${result.error.message || "Onbekende fout"}`)
-      } else {
-        console.log("Doel direct verwijderen uit lijst:", purposeToRemove)
-        setPurposes((prevPurposes) => prevPurposes.filter((p) => p !== purposeToRemove))
-
-        setImportMessage("✅ Doel verwijderd!")
-        setTimeout(() => setImportMessage(""), 2000)
-      }
-    } catch (error) {
-      console.error("Fout bij verwijderen doel:", error)
-      setImportError("Fout bij verwijderen doel")
-    }
-  }
-
-  const addNewCategory = async () => {
-    if (newCategoryName.trim() && !categories.find((c) => c.name === newCategoryName.trim())) {
-      try {
-        console.log("addNewCategory aangeroepen voor:", newCategoryName.trim())
-        const result = await saveCategory({ name: newCategoryName.trim() })
-
-        if (result.error) {
-          console.error("Fout bij toevoegen categorie:", result.error)
-          setImportError(`Fout bij toevoegen categorie: ${result.error.message || "Onbekende fout"}`)
-        } else {
-          if (result.data) {
-            console.log("Categorie direct toevoegen aan lijst:", result.data)
-            setCategories((prevCategories) => [...prevCategories, result.data])
-          }
-
-          setNewCategoryName("")
-          setImportMessage("✅ Categorie toegevoegd!")
-          setTimeout(() => setImportMessage(""), 2000)
-        }
-      } catch (error) {
-        console.error("Onverwachte fout bij toevoegen categorie:", error)
-        setImportError("Fout bij toevoegen categorie")
-      }
-    }
-  }
-
-  const updateCategory = async () => {
-    if (editingCategory && editingCategory.id) {
-      try {
-        console.log("updateCategory aangeroepen voor:", editingCategory)
-
-        // Update lokaal eerst
-        setCategories((prevCategories) =>
-          prevCategories.map((c) => (c.id === editingCategory.id ? editingCategory : c)),
-        )
-
-        setEditingCategory(null)
-        setShowEditCategoryDialog(false)
-        setImportMessage("✅ Categorie bijgewerkt!")
-        setTimeout(() => setImportMessage(""), 2000)
-      } catch (error) {
-        console.error("Fout bij bijwerken categorie:", error)
-        setImportError("Fout bij bijwerken categorie")
-      }
-    }
-  }
-
-  const removeCategory = async (categoryId: string) => {
-    try {
-      console.log("removeCategory aangeroepen voor:", categoryId)
-      const result = await deleteCategory(categoryId)
-
-      if (result.error) {
-        console.error("Fout bij verwijderen categorie:", result.error)
-        setImportError(`Fout bij verwijderen categorie: ${result.error.message || "Onbekende fout"}`)
-      } else {
-        console.log("Categorie direct verwijderen uit lijst:", categoryId)
-        setCategories((prevCategories) => prevCategories.filter((c) => c.id !== categoryId))
-
-        setImportMessage("✅ Categorie verwijderd!")
-        setTimeout(() => setImportMessage(""), 2000)
-      }
-    } catch (error) {
-      console.error("Fout bij verwijderen categorie:", error)
-      setImportError("Fout bij verwijderen categorie")
-    }
-  }
-
-  const getFilteredAndSortedEntries = () => {
-    const filtered = entries.filter((entry) => {
-      const searchMatch =
-        !searchQuery ||
-        entry.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        entry.product.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        entry.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        entry.purpose.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (entry.qrcode && entry.qrcode.toLowerCase().includes(searchQuery.toLowerCase()))
-
-      const userMatch = !filterUser || filterUser === "all" || entry.user === filterUser
-      const productMatch = !filterProduct || entry.product.toLowerCase().includes(filterProduct.toLowerCase())
-      const locationMatch = !filterLocation || filterLocation === "all" || entry.location === filterLocation
-
-      let dateMatch = true
-      if (filterDateFrom || filterDateTo) {
-        const entryDate = new Date(entry.timestamp)
-        if (filterDateFrom) {
-          const fromDate = new Date(filterDateFrom)
-          dateMatch = dateMatch && entryDate >= fromDate
-        }
-        if (filterDateTo) {
-          const toDate = new Date(filterDateTo + "T23:59:59")
-          dateMatch = dateMatch && entryDate <= toDate
-        }
-      }
-
-      return searchMatch && userMatch && productMatch && locationMatch && dateMatch
-    })
-
-    filtered.sort((a, b) => {
-      let comparison = 0
-
-      switch (sortBy) {
-        case "date":
-          comparison = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-          break
-        case "user":
-          comparison = a.user.localeCompare(b.user)
-          break
-        case "product":
-          comparison = a.product.localeCompare(b.product)
-          break
-      }
-
-      return sortOrder === "asc" ? comparison : -comparison
-    })
-
-    return filtered
-  }
-
-  const clearAllFilters = () => {
-    setSearchQuery("")
-    setFilterUser("all")
-    setFilterProduct("")
-    setFilterLocation("all")
-    setFilterDateFrom("")
-    setFilterDateTo("")
-    setSortBy("date")
-    setSortOrder("desc")
-  }
-
-  const calculateStatistics = () => {
-    const totalRegistrations = entries.length
-    const uniqueUsers = new Set(entries.map((entry) => entry.user)).size
-    const uniqueProducts = new Set(entries.map((entry) => entry.product)).size
-
-    const userCounts: Record<string, number> = {}
-    entries.forEach((entry) => {
-      userCounts[entry.user] = (userCounts[entry.user] || 0) + 1
-    })
-    const topUsers = Object.entries(userCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-
-    const productCounts: Record<string, number> = {}
-    entries.forEach((entry) => {
-      productCounts[entry.product] = (productCounts[entry.product] || 0) + 1
-    })
-    const topProducts = Object.entries(productCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-
-    const locationCounts: Record<string, number> = {}
-    entries.forEach((entry) => {
-      locationCounts[entry.location] = (locationCounts[entry.location] || 0) + 1
-    })
-    const topLocations = Object.entries(locationCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-
-    const recentActivity = [...entries]
-      .sort((a, b) => {
-        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      })
-      .slice(0, 10)
-
-  // Voeg deze nieuwe data voorbereidingen toe:
-  const monthlyData = entries.reduce((acc: Record<string, number>, entry) => {
-    const month = entry.date.substring(3) // Get MM/YYYY part
-    acc[month] = (acc[month] || 0) + 1
-    return acc
-  }, {})
-
-  const chartMonthlyData = Object.entries(monthlyData)
-    .map(([date, value]) => ({ date, value }))
-    .sort((a, b) => a.date.localeCompare(b.date))
-
-  const pieChartData = Object.entries(productCounts)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 8) // Top 8 products for better visibility
-
-  return {
-    totalRegistrations,
-    uniqueUsers,
-    uniqueProducts,
-    topUsers,
-    topProducts,
-    topLocations,
-    recentActivity,
-    chartMonthlyData,
-    pieChartData,
-  }
-}
-
-  const handleLogout = async () => {
-    const { signOut } = await import("@/lib/auth")
-    await signOut()
-  }
-
-  const stats = calculateStatistics()
-
-  // Show loading while checking authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Laden...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Show login form if not authenticated
-  if (!user) {
-    return <LoginForm onLogin={(user: User) => {}} />
-  }
-
-  // Show main app if authenticated
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header with logout button */}
+      {/* Header */}
       <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-4 sm:gap-6">
-            <div className="flex flex-col lg:flex-row items-center gap-6">
-              <div className="flex-shrink-0">
-                <div className="flex items-center bg-white p-4 rounded-lg shadow-sm border">
-                  <div className="w-1 h-12 bg-amber-500 mr-4"></div>
-                  <div className="text-2xl font-bold text-gray-800 tracking-wide">DEMATIC</div>
-                </div>
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center bg-white p-4 rounded-lg shadow-sm border">
+                <div className="w-1 h-12 bg-amber-500 mr-4"></div>
+                <div className="text-2xl font-bold text-gray-800 tracking-wide">DEMATIC</div>
               </div>
-
-              <div className="hidden lg:block w-px h-16 bg-gray-300"></div>
-
               <div className="text-center lg:text-left">
-                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Product Registratie</h1>
-                <p className="text-sm lg:text-base text-gray-600 mt-1">Registreer product gebruik en locatie</p>
+                <h1 className="text-3xl font-bold text-gray-900">Product Registratie</h1>
+                <p className="text-gray-600 mt-1">Registreer product gebruik en locatie</p>
               </div>
             </div>
-
             <div className="flex items-center gap-4 text-sm text-gray-500">
               <div className="flex items-center gap-2">
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    connectionStatus === "connected"
-                      ? "bg-green-500"
-                      : connectionStatus === "connecting"
-                        ? "bg-yellow-500"
-                        : "bg-red-500"
-                  }`}
-                ></div>
-                <span>
-                  {connectionStatus === "connected"
-                    ? "Database verbonden"
-                    : connectionStatus === "connecting"
-                      ? "Verbinden..."
-                      : "Verbindingsfout"}
-                </span>
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <span>Lokale opslag actief</span>
               </div>
-              <div className="hidden md:block">{entries.length} registraties</div>
-              <div className="flex items-center gap-2">
-                <span>
-                  {'Ingelogd als: ' + user.name + ' (' + user.email + ')'}
-                </span>
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                >
-                  Uitloggen
-                </Button>
-              </div>
+              <div>{registrations.length} registraties</div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Rest of your existing app content */}
-      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+      <div className="container mx-auto px-4 py-6">
         {showSuccess && (
           <Alert className="mb-6 border-green-200 bg-green-50">
             <AlertDescription className="text-green-800">✅ Product succesvol geregistreerd!</AlertDescription>
           </Alert>
         )}
 
-        {importMessage && (
-          <Alert className="mb-6 border-blue-200 bg-blue-50">
-            <AlertDescription className="text-blue-800">{importMessage}</AlertDescription>
-          </Alert>
-        )}
-
-        {importError && (
-          <Alert className="mb-6 border-red-200 bg-red-50">
-            <AlertDescription className="text-red-800">{importError}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Rest of the tabs and content remain the same... */}
         <Tabs defaultValue="register" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 bg-white border border-gray-200 shadow-sm">
+          <TabsList className="grid w-full grid-cols-8 bg-white border border-gray-200 shadow-sm">
             <TabsTrigger
               value="register"
               className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
@@ -1114,34 +320,34 @@ export default function ProductRegistrationApp() {
               Registreren
             </TabsTrigger>
             <TabsTrigger value="history" className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700">
-              {'Geschiedenis (' + entries.length + ')'}
+              Geschiedenis ({registrations.length})
             </TabsTrigger>
             <TabsTrigger value="users" className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700">
-              {'Gebruikers (' + users.length + ')'}
+              Gebruikers ({users.length})
             </TabsTrigger>
             <TabsTrigger
               value="products"
               className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
             >
-              {'Producten (' + products.length + ')'}
+              Producten ({products.length})
             </TabsTrigger>
             <TabsTrigger
               value="categories"
               className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
             >
-              {'Categorieën (' + categories.length + ')'}
+              Categorieën ({categories.length})
             </TabsTrigger>
             <TabsTrigger
               value="locations"
               className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
             >
-              {'Locaties (' + locations.length + ')'}
+              Locaties ({locations.length})
             </TabsTrigger>
             <TabsTrigger
               value="purposes"
               className="data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700"
             >
-              {'Doelen (' + purposes.length + ')'}
+              Doelen ({purposes.length})
             </TabsTrigger>
             <TabsTrigger
               value="statistics"
@@ -1155,15 +361,15 @@ export default function ProductRegistrationApp() {
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
                 <CardTitle className="flex items-center gap-2 text-xl">📦 Nieuw Product Registreren</CardTitle>
-                <CardDescription>Scan een QR code of vul onderstaande gegevens handmatig in</CardDescription>
+                <CardDescription>Vul onderstaande gegevens in om een product te registreren</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 gap-6">
                     <div className="space-y-2">
-                      <Label className="text-sm sm:text-base font-medium">👤 Gebruiker</Label>
+                      <Label className="text-base font-medium">👤 Gebruiker</Label>
                       <Select value={currentUser} onValueChange={setCurrentUser} required>
-                        <SelectTrigger className="h-10 sm:h-12">
+                        <SelectTrigger className="h-12">
                           <SelectValue placeholder="Selecteer gebruiker" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1177,39 +383,25 @@ export default function ProductRegistrationApp() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm sm:text-base font-medium">📦 Product</Label>
-                      <div className="flex gap-2">
-                        <Select value={selectedProduct} onValueChange={setSelectedProduct} required>
-                          <SelectTrigger className="h-10 sm:h-12 flex-1">
-                            <SelectValue placeholder="Selecteer een product" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {products.map((product) => (
-                              <SelectItem key={product.id} value={product.name}>
-                                {product.name + (product.qrcode ? ' (' + product.qrcode + ')' : '')}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            setQrScanMode("registration")
-                            startQrScanner()
-                          }}
-                          className="h-10 sm:h-12 px-4 bg-blue-600 hover:bg-blue-700"
-                          disabled={showQrScanner}
-                        >
-                          📱 Scan QR
-                        </Button>
-                      </div>
-                      {qrScanResult && <p className="text-sm text-green-600">{'✅ QR Code gescand: ' + qrScanResult}</p>}
+                      <Label className="text-base font-medium">📦 Product</Label>
+                      <Select value={selectedProduct} onValueChange={setSelectedProduct} required>
+                        <SelectTrigger className="h-12">
+                          <SelectValue placeholder="Selecteer een product" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products.map((product) => (
+                            <SelectItem key={product.id} value={product.name}>
+                              {product.name} {product.qrcode && `(${product.qrcode})`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm sm:text-base font-medium">📍 Locatie</Label>
+                      <Label className="text-base font-medium">📍 Locatie</Label>
                       <Select value={location} onValueChange={setLocation} required>
-                        <SelectTrigger className="h-10 sm:h-12">
+                        <SelectTrigger className="h-12">
                           <SelectValue placeholder="Selecteer een locatie" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1223,9 +415,9 @@ export default function ProductRegistrationApp() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm sm:text-base font-medium">🎯 Doel</Label>
+                      <Label className="text-base font-medium">🎯 Doel</Label>
                       <Select value={purpose} onValueChange={setPurpose} required>
-                        <SelectTrigger className="h-10 sm:h-12">
+                        <SelectTrigger className="h-12">
                           <SelectValue placeholder="Selecteer een doel" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1241,8 +433,8 @@ export default function ProductRegistrationApp() {
 
                   <Button
                     type="submit"
-                    className="w-full bg-amber-600 hover:bg-amber-700 h-12 sm:h-14 text-base sm:text-lg font-medium"
-                    disabled={isLoading || connectionStatus !== "connected"}
+                    className="w-full bg-amber-600 hover:bg-amber-700 h-14 text-lg font-medium"
+                    disabled={isLoading}
                   >
                     {isLoading ? "Bezig met registreren..." : "💾 Product Registreren"}
                   </Button>
@@ -1251,196 +443,76 @@ export default function ProductRegistrationApp() {
             </Card>
           </TabsContent>
 
-          {/* Add all other TabsContent sections here - keeping them the same as before */}
           <TabsContent value="history">
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
                 <CardTitle className="flex items-center gap-2 text-xl">📋 Registratie Geschiedenis</CardTitle>
-                <CardDescription>Bekijk en filter alle product registraties</CardDescription>
+                <CardDescription>Bekijk alle product registraties</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="space-y-6">
-                  <div className="space-y-6">
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <Label htmlFor="search" className="text-sm font-medium mb-1 block">
-                          Zoeken
-                        </Label>
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            id="search"
-                            type="text"
-                            placeholder="Zoek op naam, product, locatie..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-8"
-                          />
-                        </div>
-                      </div>
-                      <div className="w-full sm:w-48">
-                        <Label htmlFor="filterUser" className="text-sm font-medium mb-1 block">
-                          Gebruiker
-                        </Label>
-                        <Select value={filterUser} onValueChange={setFilterUser}>
-                          <SelectTrigger id="filterUser">
-                            <SelectValue placeholder="Alle gebruikers" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Alle gebruikers</SelectItem>
-                            {users.map((user) => (
-                              <SelectItem key={user} value={user}>
-                                {user}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="w-full sm:w-48">
-                        <Label htmlFor="filterLocation" className="text-sm font-medium mb-1 block">
-                          Locatie
-                        </Label>
-                        <Select value={filterLocation} onValueChange={setFilterLocation}>
-                          <SelectTrigger id="filterLocation">
-                            <SelectValue placeholder="Alle locaties" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Alle locaties</SelectItem>
-                            {locations.map((loc) => (
-                              <SelectItem key={loc} value={loc}>
-                                {loc}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="w-full sm:w-48">
-                        <Label htmlFor="dateFrom" className="text-sm font-medium mb-1 block">
-                          Datum vanaf
-                        </Label>
-                        <Input
-                          id="dateFrom"
-                          type="date"
-                          value={filterDateFrom}
-                          onChange={(e) => setFilterDateFrom(e.target.value)}
-                        />
-                      </div>
-                      <div className="w-full sm:w-48">
-                        <Label htmlFor="dateTo" className="text-sm font-medium mb-1 block">
-                          Datum tot
-                        </Label>
-                        <Input
-                          id="dateTo"
-                          type="date"
-                          value={filterDateTo}
-                          onChange={(e) => setFilterDateTo(e.target.value)}
-                        />
-                      </div>
-                      <div className="w-full sm:w-48">
-                        <Label htmlFor="sortBy" className="text-sm font-medium mb-1 block">
-                          Sorteer op
-                        </Label>
-                        <Select
-                          value={sortBy}
-                          onValueChange={(value) => setSortBy(value as "date" | "user" | "product")}
-                        >
-                          <SelectTrigger id="sortBy">
-                            <SelectValue placeholder="Sorteer op" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="date">Datum</SelectItem>
-                            <SelectItem value="user">Gebruiker</SelectItem>
-                            <SelectItem value="product">Product</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="w-full sm:w-48">
-                        <Label htmlFor="sortOrder" className="text-sm font-medium mb-1 block">
-                          Volgorde
-                        </Label>
-                        <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as "asc" | "desc")}>
-                          <SelectTrigger id="sortOrder">
-                            <SelectValue placeholder="Volgorde" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="desc">Nieuwste eerst</SelectItem>
-                            <SelectItem value="asc">Oudste eerst</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between">
-                      <Button variant="outline" onClick={clearAllFilters} className="text-sm">
-                        <X className="mr-1 h-4 w-4" /> Wis filters
-                      </Button>
-                      <Button onClick={exportToCSV} className="bg-green-600 hover:bg-green-700 text-sm">
-                        <Download className="mr-1 h-4 w-4" /> Exporteer naar CSV
-                      </Button>
-                    </div>
+                <div className="space-y-4">
+                  <div className="flex justify-end">
+                    <Button onClick={exportToCSV} className="bg-green-600 hover:bg-green-700">
+                      <Download className="mr-2 h-4 w-4" /> Exporteer naar CSV
+                    </Button>
                   </div>
 
                   <div className="rounded-lg border overflow-hidden">
                     <Table>
                       <TableHeader className="bg-gray-50">
                         <TableRow>
-                          <TableHead className="w-[100px]">Datum</TableHead>
-                          <TableHead className="w-[80px]">Tijd</TableHead>
+                          <TableHead>Datum</TableHead>
+                          <TableHead>Tijd</TableHead>
                           <TableHead>Gebruiker</TableHead>
                           <TableHead>Product</TableHead>
-                          <TableHead className="hidden md:table-cell">QR Code</TableHead>
-                          <TableHead className="hidden md:table-cell">Categorie</TableHead>
+                          <TableHead>QR Code</TableHead>
+                          <TableHead>Categorie</TableHead>
                           <TableHead>Locatie</TableHead>
-                          <TableHead className="hidden md:table-cell">Doel</TableHead>
+                          <TableHead>Doel</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {getFilteredAndSortedEntries().length === 0 ? (
+                        {registrations.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                              Geen registraties gevonden met de huidige filters
+                              Nog geen registraties
                             </TableCell>
                           </TableRow>
                         ) : (
-                          getFilteredAndSortedEntries().map((entry) => (
-                            <TableRow key={entry.id}>
-                              <TableCell className="font-medium">{entry.date}</TableCell>
-                              <TableCell>{entry.time}</TableCell>
-                              <TableCell>{entry.user}</TableCell>
-                              <TableCell>{entry.product}</TableCell>
-                              <TableCell className="hidden md:table-cell">
-                                {entry.qrcode ? (
-                                  <Badge variant="outline" className="font-mono text-xs">
-                                    {entry.qrcode}
-                                  </Badge>
-                                ) : (
-                                  "-"
-                                )}
-                              </TableCell>
-                              <TableCell className="hidden md:table-cell">
-                                {(() => {
-                                  const product = products.find((p) => p.name === entry.product)
-                                  if (product?.categoryId) {
-                                    const category = categories.find((c) => c.id === product.categoryId)
-                                    return category ? (
-                                      <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
-                                        {category.name}
-                                      </Badge>
-                                    ) : (
-                                      "-"
-                                    )
-                                  }
-                                  return "-"
-                                })()}
-                              </TableCell>
-                              <TableCell>{entry.location}</TableCell>
-                              <TableCell className="hidden md:table-cell">{entry.purpose}</TableCell>
-                            </TableRow>
-                          ))
+                          registrations.map((entry) => {
+                            const date = new Date(entry.timestamp)
+                            const product = products.find((p) => p.name === entry.productName)
+                            return (
+                              <TableRow key={entry.id}>
+                                <TableCell className="font-medium">{date.toLocaleDateString("nl-NL")}</TableCell>
+                                <TableCell>
+                                  {date.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}
+                                </TableCell>
+                                <TableCell>{entry.user}</TableCell>
+                                <TableCell>{entry.productName}</TableCell>
+                                <TableCell>
+                                  {entry.qrcode ? (
+                                    <Badge variant="outline" className="font-mono text-xs">
+                                      {entry.qrcode}
+                                    </Badge>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {product?.categoryId ? (
+                                    <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
+                                      {getCategoryName(product.categoryId)}
+                                    </Badge>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </TableCell>
+                                <TableCell>{entry.location}</TableCell>
+                                <TableCell>{entry.purpose}</TableCell>
+                              </TableRow>
+                            )
+                          })
                         )}
                       </TableBody>
                     </Table>
@@ -1450,7 +522,6 @@ export default function ProductRegistrationApp() {
             </Card>
           </TabsContent>
 
-          {/* Continue with other tabs... */}
           <TabsContent value="users">
             <Card className="shadow-sm">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
@@ -1466,29 +537,8 @@ export default function ProductRegistrationApp() {
                       value={newUserName}
                       onChange={(e) => setNewUserName(e.target.value)}
                     />
-                    <Button onClick={addNewUser} disabled={connectionStatus !== "connected"}>
+                    <Button onClick={addNewUser}>
                       <Plus className="mr-2 h-4 w-4" /> Toevoegen
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      accept=".txt,.csv"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleFileImport(e.target.files[0], "users")
-                        }
-                      }}
-                      id="user-import"
-                      className="hidden"
-                      ref={userFileInputRef}
-                    />
-                    <Label htmlFor="user-import" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
-                      <Download className="mr-2 h-4 w-4" /> Importeer gebruikers
-                    </Label>
-                    <Button variant="outline" onClick={() => exportTemplate("users")}>
-                      <Download className="mr-2 h-4 w-4" /> Template
                     </Button>
                   </div>
 
@@ -1504,12 +554,7 @@ export default function ProductRegistrationApp() {
                         <TableRow key={user}>
                           <TableCell>{user}</TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => removeUser(user)}
-                              disabled={connectionStatus !== "connected"}
-                            >
+                            <Button variant="destructive" size="icon" onClick={() => removeUser(user)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -1530,38 +575,22 @@ export default function ProductRegistrationApp() {
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <Input
                       type="text"
                       placeholder="Nieuw product"
                       value={newProductName}
                       onChange={(e) => setNewProductName(e.target.value)}
                     />
-                    <div className="flex gap-2">
-                      <Input
-                        type="text"
-                        placeholder="QR code (optioneel)"
-                        value={newProductQrCode}
-                        onChange={(e) => setNewProductQrCode(e.target.value)}
-                      />
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          setQrScanMode("product-management")
-                          startQrScanner()
-                        }}
-                        className="px-4 bg-blue-600 hover:bg-blue-700"
-                        disabled={showQrScanner}
-                      >
-                        📱 Scan QR
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input
+                      type="text"
+                      placeholder="QR code (optioneel)"
+                      value={newProductQrCode}
+                      onChange={(e) => setNewProductQrCode(e.target.value)}
+                    />
                     <Select value={newProductCategory} onValueChange={setNewProductCategory}>
-                      <SelectTrigger className="h-10">
-                        <SelectValue placeholder="Selecteer categorie (optioneel)" />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecteer categorie" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Geen categorie</SelectItem>
@@ -1572,38 +601,17 @@ export default function ProductRegistrationApp() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button onClick={addNewProduct} disabled={connectionStatus !== "connected"}>
-                      <Plus className="mr-2 h-4 w-4" /> Toevoegen
-                    </Button>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      accept=".txt,.csv"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleFileImport(e.target.files[0], "products")
-                        }
-                      }}
-                      id="product-import"
-                      className="hidden"
-                      ref={productFileInputRef}
-                    />
-                    <Label htmlFor="product-import" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
-                      <Download className="mr-2 h-4 w-4" /> Importeer producten
-                    </Label>
-                    <Button variant="outline" onClick={() => exportTemplate("products")}>
-                      <Download className="mr-2 h-4 w-4" /> Template
-                    </Button>
-                  </div>
+                  <Button onClick={addNewProduct}>
+                    <Plus className="mr-2 h-4 w-4" /> Product Toevoegen
+                  </Button>
 
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Naam</TableHead>
-                        <TableHead className="hidden md:table-cell">QR Code</TableHead>
-                        <TableHead className="hidden md:table-cell">Categorie</TableHead>
+                        <TableHead>QR Code</TableHead>
+                        <TableHead>Categorie</TableHead>
                         <TableHead className="text-right">Acties</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1611,7 +619,7 @@ export default function ProductRegistrationApp() {
                       {products.map((product) => (
                         <TableRow key={product.id}>
                           <TableCell>{product.name}</TableCell>
-                          <TableCell className="hidden md:table-cell">
+                          <TableCell>
                             {product.qrcode ? (
                               <Badge variant="outline" className="font-mono text-xs">
                                 {product.qrcode}
@@ -1620,39 +628,17 @@ export default function ProductRegistrationApp() {
                               "-"
                             )}
                           </TableCell>
-                          <TableCell className="hidden md:table-cell">
+                          <TableCell>
                             {product.categoryId ? (
-                              (() => {
-                                const category = categories.find((c) => c.id === product.categoryId)
-                                return category ? (
-                                  <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
-                                    {category.name}
-                                  </Badge>
-                                ) : (
-                                  "-"
-                                )
-                              })()
+                              <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
+                                {getCategoryName(product.categoryId)}
+                              </Badge>
                             ) : (
                               "-"
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setEditingProduct(product)
-                                setShowEditDialog(true)
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => removeProduct(product)}
-                              disabled={connectionStatus !== "connected"}
-                            >
+                            <Button variant="destructive" size="icon" onClick={() => removeProduct(product)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -1680,7 +666,7 @@ export default function ProductRegistrationApp() {
                       value={newCategoryName}
                       onChange={(e) => setNewCategoryName(e.target.value)}
                     />
-                    <Button onClick={addNewCategory} disabled={connectionStatus !== "connected"}>
+                    <Button onClick={addNewCategory}>
                       <Plus className="mr-2 h-4 w-4" /> Toevoegen
                     </Button>
                   </div>
@@ -1697,22 +683,7 @@ export default function ProductRegistrationApp() {
                         <TableRow key={category.id}>
                           <TableCell>{category.name}</TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setEditingCategory(category)
-                                setShowEditCategoryDialog(true)
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => removeCategory(category.id)}
-                              disabled={connectionStatus !== "connected"}
-                            >
+                            <Button variant="destructive" size="icon" onClick={() => removeCategory(category)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -1740,29 +711,8 @@ export default function ProductRegistrationApp() {
                       value={newLocationName}
                       onChange={(e) => setNewLocationName(e.target.value)}
                     />
-                    <Button onClick={addNewLocation} disabled={connectionStatus !== "connected"}>
+                    <Button onClick={addNewLocation}>
                       <Plus className="mr-2 h-4 w-4" /> Toevoegen
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      accept=".txt,.csv"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleFileImport(e.target.files[0], "locations")
-                        }
-                      }}
-                      id="location-import"
-                      className="hidden"
-                      ref={locationFileInputRef}
-                    />
-                    <Label htmlFor="location-import" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
-                      <Download className="mr-2 h-4 w-4" /> Importeer locaties
-                    </Label>
-                    <Button variant="outline" onClick={() => exportTemplate("locations")}>
-                      <Download className="mr-2 h-4 w-4" /> Template
                     </Button>
                   </div>
 
@@ -1778,12 +728,7 @@ export default function ProductRegistrationApp() {
                         <TableRow key={location}>
                           <TableCell>{location}</TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => removeLocation(location)}
-                              disabled={connectionStatus !== "connected"}
-                            >
+                            <Button variant="destructive" size="icon" onClick={() => removeLocation(location)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -1811,29 +756,8 @@ export default function ProductRegistrationApp() {
                       value={newPurposeName}
                       onChange={(e) => setNewPurposeName(e.target.value)}
                     />
-                    <Button onClick={addNewPurpose} disabled={connectionStatus !== "connected"}>
+                    <Button onClick={addNewPurpose}>
                       <Plus className="mr-2 h-4 w-4" /> Toevoegen
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      accept=".txt,.csv"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleFileImport(e.target.files[0], "purposes")
-                        }
-                      }}
-                      id="purpose-import"
-                      className="hidden"
-                      ref={purposeFileInputRef}
-                    />
-                    <Label htmlFor="purpose-import" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
-                      <Download className="mr-2 h-4 w-4" /> Importeer doelen
-                    </Label>
-                    <Button variant="outline" onClick={() => exportTemplate("purposes")}>
-                      <Download className="mr-2 h-4 w-4" /> Template
                     </Button>
                   </div>
 
@@ -1849,12 +773,7 @@ export default function ProductRegistrationApp() {
                         <TableRow key={purpose}>
                           <TableCell>{purpose}</TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => removePurpose(purpose)}
-                              disabled={connectionStatus !== "connected"}
-                            >
+                            <Button variant="destructive" size="icon" onClick={() => removePurpose(purpose)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -1874,13 +793,13 @@ export default function ProductRegistrationApp() {
                 <CardDescription>Overzicht van product registraties</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <Card className="shadow-sm">
                     <CardHeader>
                       <CardTitle>Totaal Registraties</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold">{stats.totalRegistrations}</div>
+                      <div className="text-3xl font-bold">{registrations.length}</div>
                     </CardContent>
                   </Card>
 
@@ -1889,7 +808,7 @@ export default function ProductRegistrationApp() {
                       <CardTitle>Unieke Gebruikers</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold">{stats.uniqueUsers}</div>
+                      <div className="text-3xl font-bold">{new Set(registrations.map((r) => r.user)).size}</div>
                     </CardContent>
                   </Card>
 
@@ -1898,299 +817,15 @@ export default function ProductRegistrationApp() {
                       <CardTitle>Unieke Producten</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold">{stats.uniqueProducts}</div>
+                      <div className="text-3xl font-bold">{new Set(registrations.map((r) => r.productName)).size}</div>
                     </CardContent>
                   </Card>
-
-                  <Card className="shadow-sm col-span-1 md:col-span-2 lg:col-span-3">
-                    <CardHeader>
-                      <CardTitle>Top 5 Gebruikers (Registraties)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Gebruiker</TableHead>
-                            <TableHead>Aantal</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {stats.topUsers.map(([user, count]) => (
-                            <TableRow key={user}>
-                              <TableCell>{user}</TableCell>
-                              <TableCell>{count}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="shadow-sm col-span-1 md:col-span-2 lg:col-span-3">
-                    <CardHeader>
-                      <CardTitle>Top 5 Producten (Registraties)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Product</TableHead>
-                            <TableHead>Aantal</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {stats.topProducts.map(([product, count]) => (
-                            <TableRow key={product}>
-                              <TableCell>{product}</TableCell>
-                              <TableCell>{count}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="shadow-sm col-span-1 md:col-span-2 lg:col-span-3">
-                    <CardHeader>
-                      <CardTitle>Top 5 Locaties (Registraties)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Locatie</TableHead>
-                            <TableHead>Aantal</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {stats.topLocations.map(([location, count]) => (
-                            <TableRow key={location}>
-                              <TableCell>{location}</TableCell>
-                              <TableCell>{count}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="shadow-sm col-span-1 md:col-span-2 lg:col-span-3">
-                    <CardHeader>
-                      <CardTitle>Recente Activiteit</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Datum</TableHead>
-                            <TableHead>Gebruiker</TableHead>
-                            <TableHead>Product</TableHead>
-                            <TableHead>Locatie</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {stats.recentActivity.map((entry) => (
-                            <TableRow key={entry.id}>
-                              <TableCell>{entry.date + ' ' + entry.time}</TableCell>
-                              <TableCell>{entry.user}</TableCell>
-                              <TableCell>{entry.product}</TableCell>
-                              <TableCell>{entry.location}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="mt-8">
-                  <h2 className="text-xl font-semibold mb-4">Registraties per Maand</h2>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={stats.chartMonthlyData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="value" fill="#8884d8" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="mt-8">
-                  <h2 className="text-xl font-semibold mb-4">Product Verdeling</h2>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={stats.pieChartData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        fill="#8884d8"
-                        label
-                      >
-                        {stats.pieChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={`#${Math.floor(Math.random()*16777215).toString(16)}`} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Edit Product Dialog */}
-      {showEditDialog && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3 text-center">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Product Bewerken</h3>
-              <div className="mt-2 px-7 py-3">
-                <Label htmlFor="productName">Product Naam</Label>
-                <Input
-                  type="text"
-                  id="productName"
-                  value={editingProduct?.name || ""}
-                  onChange={(e) =>
-                    setEditingProduct((prev) => (prev ? { ...prev, name: e.target.value } : prev))
-                  }
-                  className="mt-1"
-                />
-
-                <Label htmlFor="productQrCode" className="mt-4">
-                  QR Code
-                </Label>
-                <Input
-                  type="text"
-                  id="productQrCode"
-                  value={editingProduct?.qrcode || ""}
-                  onChange={(e) =>
-                    setEditingProduct((prev) => (prev ? { ...prev, qrcode: e.target.value } : prev))
-                  }
-                  className="mt-1"
-                />
-
-                <Label htmlFor="productCategory" className="mt-4">
-                  Categorie
-                </Label>
-                <Select
-                  value={editingProduct?.categoryId || "none"}
-                  onValueChange={(value) =>
-                    setEditingProduct((prev) => (prev ? { ...prev, categoryId: value } : prev))
-                  }
-                >
-                  <SelectTrigger className="w-full mt-1">
-                    <SelectValue placeholder="Selecteer categorie (optioneel)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Geen categorie</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="items-center px-4 py-3">
-                <Button variant="ghost" className="px-4 py-2 bg-gray-50 text-gray-800 hover:bg-gray-100 hover:text-gray-900 rounded-md" onClick={() => setShowEditDialog(false)}>
-                  Annuleren
-                </Button>
-                <Button
-                  className="px-4 py-2 bg-green-500 text-white font-medium rounded-md hover:bg-green-600"
-                  onClick={updateProduct}
-                >
-                  Opslaan
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Category Dialog */}
-      {showEditCategoryDialog && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3 text-center">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Categorie Bewerken</h3>
-              <div className="mt-2 px-7 py-3">
-                <Label htmlFor="categoryName">Categorie Naam</Label>
-                <Input
-                  type="text"
-                  id="categoryName"
-                  value={editingCategory?.name || ""}
-                  onChange={(e) =>
-                    setEditingCategory((prev) => (prev ? { ...prev, name: e.target.value } : prev))
-                  }
-                  className="mt-1"
-                />
-              </div>
-              <div className="items-center px-4 py-3">
-                <Button variant="ghost" className="px-4 py-2 bg-gray-50 text-gray-800 hover:bg-gray-100 hover:text-gray-900 rounded-md" onClick={() => setShowEditCategoryDialog(false)}>
-                  Annuleren
-                </Button>
-                <Button
-                  className="px-4 py-2 bg-green-500 text-white font-medium rounded-md hover:bg-green-600"
-                  onClick={updateCategory}
-                >
-                  Opslaan
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* QR Scanner Modal */}
-      {showQrScanner && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3 text-center">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">QR Code Scanner</h3>
-              <div className="mt-2 px-7 py-3">
-                {isScanning ? (
-                  <>
-                    {navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? (
-                      <>
-                        <video ref={videoRef} width="100%" autoPlay muted playsInline className="rounded-md"></video>
-                        <canvas ref={canvasRef} style={{ display: "none" }}></canvas>
-                      </>
-                    ) : (
-                      <p className="text-red-500">Camera niet beschikbaar</p>
-                    )}
-                  </>
-                ) : (
-                  <p>Camera wordt geladen...</p>
-                )}
-                <Input
-                  type="text"
-                  placeholder="Voer QR code handmatig in"
-                  value={qrScanResult}
-                  onChange={(e) => setQrScanResult(e.target.value)}
-                  className="mt-4"
-                />
-              </div>
-              <div className="items-center px-4 py-3">
-                <Button variant="ghost" className="px-4 py-2 bg-gray-50 text-gray-800 hover:bg-gray-100 hover:text-gray-900 rounded-md" onClick={stopQrScanner}>
-                  Annuleren
-                </Button>
-                <Button
-                  className="px-4 py-2 bg-blue-500 text-white font-medium rounded-md hover:bg-blue-600"
-                  onClick={scanQrCode}
-                >
-                  Invoeren
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  )\
+  )
 }
