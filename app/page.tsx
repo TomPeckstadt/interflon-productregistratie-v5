@@ -1636,107 +1636,39 @@ export default function ProductRegistrationApp() {
                 <CardDescription>Overzicht van product registraties</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-8">
+                  {/* Top 3 statistiek kaarten */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <Card className="shadow-sm">
+                      <CardHeader>
+                        <CardTitle>Totaal Registraties</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">{stats.totalRegistrations}</div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="shadow-sm">
+                      <CardHeader>
+                        <CardTitle>Unieke Gebruikers</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">{stats.uniqueUsers}</div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="shadow-sm">
+                      <CardHeader>
+                        <CardTitle>Unieke Producten</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">{stats.uniqueProducts}</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Recente Activiteit */}
                   <Card className="shadow-sm">
-                    <CardHeader>
-                      <CardTitle>Totaal Registraties</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">{stats.totalRegistrations}</div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="shadow-sm">
-                    <CardHeader>
-                      <CardTitle>Unieke Gebruikers</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">{stats.uniqueUsers}</div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="shadow-sm">
-                    <CardHeader>
-                      <CardTitle>Unieke Producten</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">{stats.uniqueProducts}</div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="shadow-sm col-span-1 md:col-span-2 lg:col-span-3">
-                    <CardHeader>
-                      <CardTitle>Top 5 Gebruikers (Registraties)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Gebruiker</TableHead>
-                            <TableHead>Aantal</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {stats.topUsers.map(([user, count]) => (
-                            <TableRow key={user}>
-                              <TableCell>{user}</TableCell>
-                              <TableCell>{count}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="shadow-sm col-span-1 md:col-span-2 lg:col-span-3">
-                    <CardHeader>
-                      <CardTitle>Top 5 Producten (Registraties)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Product</TableHead>
-                            <TableHead>Aantal</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {stats.topProducts.map(([product, count]) => (
-                            <TableRow key={product}>
-                              <TableCell>{product}</TableCell>
-                              <TableCell>{count}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="shadow-sm col-span-1 md:col-span-2 lg:col-span-3">
-                    <CardHeader>
-                      <CardTitle>Top 5 Locaties (Registraties)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Locatie</TableHead>
-                            <TableHead>Aantal</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {stats.topLocations.map(([location, count]) => (
-                            <TableRow key={location}>
-                              <TableCell>{location}</TableCell>
-                              <TableCell>{count}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="shadow-sm col-span-1 md:col-span-2 lg:col-span-3">
                     <CardHeader>
                       <CardTitle>Recente Activiteit</CardTitle>
                     </CardHeader>
@@ -1769,42 +1701,123 @@ export default function ProductRegistrationApp() {
                       </Table>
                     </CardContent>
                   </Card>
-                </div>
 
-                <div className="mt-8">
-                  <h2 className="text-xl font-semibold mb-4">Registraties per Maand</h2>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={stats.chartMonthlyData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="value" fill="#8884d8" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                  {/* Top 5 tabellen naast elkaar */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card className="shadow-sm">
+                      <CardHeader>
+                        <CardTitle>Top 5 Gebruikers</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Gebruiker</TableHead>
+                              <TableHead>Aantal</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {stats.topUsers.map(([user, count]) => (
+                              <TableRow key={user}>
+                                <TableCell>{user}</TableCell>
+                                <TableCell>{count}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
 
-                <div className="mt-8">
-                  <h2 className="text-xl font-semibold mb-4">Product Verdeling</h2>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={stats.pieChartData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        fill="#8884d8"
-                        label
-                      >
-                        {stats.pieChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={`#${Math.floor(Math.random() * 16777215).toString(16)}`} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                    <Card className="shadow-sm">
+                      <CardHeader>
+                        <CardTitle>Top 5 Producten</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Product</TableHead>
+                              <TableHead>Aantal</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {stats.topProducts.map(([product, count]) => (
+                              <TableRow key={product}>
+                                <TableCell>{product}</TableCell>
+                                <TableCell>{count}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="shadow-sm">
+                      <CardHeader>
+                        <CardTitle>Top 5 Locaties</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Locatie</TableHead>
+                              <TableHead>Aantal</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {stats.topLocations.map(([location, count]) => (
+                              <TableRow key={location}>
+                                <TableCell>{location}</TableCell>
+                                <TableCell>{count}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Charts onderaan */}
+                  <div className="space-y-8">
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4">Registraties per Maand</h2>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={stats.chartMonthlyData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="value" fill="#8884d8" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4">Product Verdeling</h2>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={stats.pieChartData}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            fill="#8884d8"
+                            label
+                          >
+                            {stats.pieChartData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={`#${Math.floor(Math.random() * 16777215).toString(16)}`}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
