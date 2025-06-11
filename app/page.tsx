@@ -833,6 +833,22 @@ export default function ProductRegistrationApp() {
       .sort((a, b) => a.localeCompare(b, "nl", { sensitivity: "base" }))
   }
 
+  // Function to get filtered and sorted products
+  const getFilteredAndSortedProducts = () => {
+    return products
+      .filter((product) => {
+        const searchMatch =
+          !productSearchQuery ||
+          product.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+          (product.qrcode && product.qrcode.toLowerCase().includes(productSearchQuery.toLowerCase()))
+
+        const categoryMatch = selectedCategory === "all" || product.categoryId === selectedCategory
+
+        return searchMatch && categoryMatch
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, "nl", { sensitivity: "base" }))
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -1489,6 +1505,62 @@ export default function ProductRegistrationApp() {
                     </Button>
                   </div>
 
+                  {/* Zoekveld en filter voor producten */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="product-search" className="text-sm font-medium">
+                          Zoek product
+                        </Label>
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            id="product-search"
+                            type="text"
+                            placeholder="Zoek op naam of QR code..."
+                            value={productSearchQuery}
+                            onChange={(e) => setProductSearchQuery(e.target.value)}
+                            className="pl-8"
+                          />
+                          {productSearchQuery && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-1 top-1 h-6 w-6 p-0"
+                              onClick={() => setProductSearchQuery("")}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="product-category-filter" className="text-sm font-medium">
+                          Filter op categorie
+                        </Label>
+                        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                          <SelectTrigger id="product-category-filter">
+                            <SelectValue placeholder="Alle categorieën" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Alle categorieën</SelectItem>
+                            {categories.map((category) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="text-sm text-gray-600 mb-2">
+                      {getFilteredAndSortedProducts().length} van {products.length} producten
+                      {(productSearchQuery || selectedCategory !== "all") &&
+                        ` (gefilterd${productSearchQuery ? ` op "${productSearchQuery}"` : ""}${selectedCategory !== "all" ? ` - categorie: ${getCategoryName(selectedCategory)}` : ""})`}
+                    </div>
+                  </div>
+
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1499,49 +1571,59 @@ export default function ProductRegistrationApp() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {products.map((product) => (
-                        <TableRow key={product.id}>
-                          <TableCell>{product.name}</TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {product.qrcode ? (
-                              <Badge variant="outline" className="font-mono text-xs">
-                                {product.qrcode}
-                              </Badge>
-                            ) : (
-                              "-"
-                            )}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {product.categoryId ? (
-                              <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
-                                {getCategoryName(product.categoryId)}
-                              </Badge>
-                            ) : (
-                              "-"
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              size="icon"
-                              onClick={() => {
-                                setEditingProduct(product)
-                                setShowEditDialog(true)
-                              }}
-                              className="bg-orange-600 hover:bg-orange-700 text-white"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => removeProduct(product)}
-                              className="bg-red-500 hover:bg-red-600"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                      {getFilteredAndSortedProducts().length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                            {productSearchQuery || selectedCategory !== "all"
+                              ? `Geen producten gevonden${productSearchQuery ? ` voor "${productSearchQuery}"` : ""}${selectedCategory !== "all" ? ` in categorie "${getCategoryName(selectedCategory)}"` : ""}`
+                              : "Geen producten beschikbaar"}
                           </TableCell>
                         </TableRow>
-                      ))}
+                      ) : (
+                        getFilteredAndSortedProducts().map((product) => (
+                          <TableRow key={product.id}>
+                            <TableCell>{product.name}</TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              {product.qrcode ? (
+                                <Badge variant="outline" className="font-mono text-xs">
+                                  {product.qrcode}
+                                </Badge>
+                              ) : (
+                                "-"
+                              )}
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              {product.categoryId ? (
+                                <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
+                                  {getCategoryName(product.categoryId)}
+                                </Badge>
+                              ) : (
+                                "-"
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="icon"
+                                onClick={() => {
+                                  setEditingProduct(product)
+                                  setShowEditDialog(true)
+                                }}
+                                className="bg-orange-600 hover:bg-orange-700 text-white mr-2"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="icon"
+                                onClick={() => removeProduct(product)}
+                                className="bg-red-500 hover:bg-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                   </Table>
                 </div>
