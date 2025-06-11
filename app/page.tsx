@@ -1678,7 +1678,7 @@ export default function ProductRegistrationApp() {
                   </div>
 
                   {/* Recente Activiteit */}
-                  <Card className="shadow-sm">
+                  <Card className="shadow-sm bg-gradient-to-r from-amber-50 to-orange-50">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg">Recente Activiteit</CardTitle>
                     </CardHeader>
