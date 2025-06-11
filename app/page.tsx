@@ -1668,7 +1668,7 @@ export default function ProductRegistrationApp() {
                   </div>
 
                   {/* Recente Activiteit */}
-                  <Card className="shadow-sm">
+                  <Card className="shadow-sm" style={{ backgroundColor: "#f5f1e8" }}>
                     <CardHeader>
                       <CardTitle>Recente Activiteit</CardTitle>
                     </CardHeader>
